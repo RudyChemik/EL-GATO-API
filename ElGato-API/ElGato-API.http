@@ -1,0 +1,6 @@
+@ElGato_API_HostAddress = http://localhost:5094
+
+GET {{ElGato_API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
