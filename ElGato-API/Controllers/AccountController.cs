@@ -24,7 +24,7 @@ namespace ElGato_API.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> RegisterWithQuestionary(RegisterWithQuestVM registerVM) 
+        public async Task<IActionResult> RegisterWithQuestionary([FromBody]RegisterWithQuestVM registerVM) 
         {
             if (!ModelState.IsValid)
                 return StatusCode(400, "Model state not valid.");
@@ -35,7 +35,7 @@ namespace ElGato_API.Controllers
             {
                 var mailStatus = await _accountService.IsEmailAlreadyUsed(registerVM.Email);
                 if (mailStatus)
-                    return BadRequest("Error: E-mail address already in use");
+                    return StatusCode(409, "E-mail address already in use");
 
                 var calorieIntake = _dietService.CalculateCalories(registerVM.Questionary);
                 registerVMO.calorieIntake = calorieIntake;
@@ -79,6 +79,12 @@ namespace ElGato_API.Controllers
             catch (Exception ex) { 
                 return StatusCode(500, ex.Message);
             }        
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ChangePassword() 
+        { 
+            throw new NotImplementedException();
         }
 
     }
