@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Principal;
 using System.Text;
 
 namespace ElGato_API.Data.JWT
@@ -57,6 +58,26 @@ namespace ElGato_API.Data.JWT
             return userIdClaim.Value;
         }
 
+        public string GetUserIdClaimStringBased(string jwt)
+        {
+            var handler = new JwtSecurityTokenHandler();
+
+            if (!handler.CanReadToken(jwt))
+            {
+                throw new ArgumentException("Invalid JWT token.");
+            }
+
+            var jwtToken = handler.ReadJwtToken(jwt);
+
+            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+
+            if (userIdClaim == null)
+            {
+                throw new InvalidOperationException("User ID claim not found.");
+            }
+
+            return userIdClaim.Value;
+        }
 
     }
 }

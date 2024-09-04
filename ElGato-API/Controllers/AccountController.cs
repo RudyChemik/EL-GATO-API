@@ -1,4 +1,6 @@
-﻿using ElGato_API.Interfaces;
+﻿using ElGato_API.Data;
+using ElGato_API.Data.JWT;
+using ElGato_API.Interfaces;
 using ElGato_API.VM;
 using ElGato_API.VM.User_Auth;
 using ElGato_API.VMO.UserAuth;
@@ -15,11 +17,15 @@ namespace ElGato_API.Controllers
     {
         private readonly IAccountService _accountService;
         private readonly IDietService _dietService;
+        private readonly IMongoInits _mongoInits;
+        private readonly IJwtService _jwtService;
 
-        public AccountController(IAccountService accountService, IDietService dietService)
+        public AccountController(IAccountService accountService, IDietService dietService, IMongoInits mongoInits, IJwtService jwtService)
         {
             _accountService = accountService;
             _dietService = dietService;
+            _mongoInits = mongoInits;
+            _jwtService = jwtService;
         }
 
         [HttpPost]
@@ -46,11 +52,14 @@ namespace ElGato_API.Controllers
                 var loginRes = await _accountService.LoginUser(new LoginVM() { Email = registerVM.Email, Password = registerVM.Password });
                 if (!loginRes.IdentityResult.Succeeded) {
                     registerVMO.Success = false;
+                    
                     return StatusCode(400, registerVMO);
                 }
 
                 registerVMO.Success = true;
                 registerVMO.JWT = loginRes.JwtToken;
+
+                await _mongoInits.CreateUserDietDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
 
                 return Ok(registerVMO);
             }

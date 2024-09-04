@@ -18,6 +18,42 @@ namespace ElGato_API.Controllers
             _dietService = dietService;
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> AddNewMeal(string? mealName, DateTime date)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+                try
+                {
+                    var res = await _dietService.AddNewMeal(userId, mealName, date);
+                    if (!res.Success)
+                    {
+                        return StatusCode(400, res.ErrorMessage);
+                    }
+
+                    return Ok("Succsesfully added.");
+
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, ex.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+
+        }
+
+
         [HttpGet]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> GetIngridientByEan() 

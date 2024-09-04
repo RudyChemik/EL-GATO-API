@@ -73,6 +73,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IDietService, DietService>();
+builder.Services.AddScoped<IMongoInits, MongoInits>();
 
 //IDENTITY
 builder.Services.AddIdentity<AppUser, IdentityRole>()

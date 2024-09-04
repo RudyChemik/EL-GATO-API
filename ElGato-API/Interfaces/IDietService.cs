@@ -6,7 +6,11 @@ namespace ElGato_API.Interfaces
 {
     public interface IDietService
     {
+        //POST
+        Task<BasicErrorResponse> AddNewMeal(string userId, string mealName, DateTime date);
+        //getters
         Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean);
+
         CalorieIntakeVMO CalculateCalories(QuestionaryVM questionary);
     }
 }

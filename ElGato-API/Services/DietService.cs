@@ -1,15 +1,106 @@
 ﻿using ElGato_API.Interfaces;
+using ElGato_API.ModelsMongo.Diet;
+using ElGato_API.ModelsMongo.Diet.History;
 using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Questionary;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 
 namespace ElGato_API.Services
 {
     public class DietService : IDietService
     {
-        public DietService() { }
+        private readonly IMongoCollection<DietDocument> _dietCollection;
+        private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
 
+        public DietService(IMongoDatabase database) 
+        {
+            _dietCollection = database.GetCollection<DietDocument>("DailyDiet");
+            _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
+        }
+
+        public async Task<BasicErrorResponse> AddNewMeal(string userId, string mealName, DateTime date)
+        {
+            int currentMealCount = 0;
+
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument != null)
+                {
+                    if (existingDocument.DailyPlans != null && existingDocument.DailyPlans.Count() >= 6) 
+                    {
+                        var oldestPlan = existingDocument.DailyPlans.OrderBy(dp => dp.Date).First();
+                        await MovePlanToHistory(userId, oldestPlan);
+
+                        var update = Builders<DietDocument>.Update.PullFilter(d => d.DailyPlans, dp => dp.Date == oldestPlan.Date);
+                        await _dietCollection.UpdateOneAsync(d => d.UserId == userId, update);
+                    }
+
+                    var currentPlan = existingDocument.DailyPlans.FirstOrDefault(dp => dp.Date.Date == date.Date);
+                    if (currentPlan != null)
+                    {
+                        currentMealCount = currentPlan.Meals.Count();
+
+                        var newMeal = new MealPlan() { Name = mealName??("Meal" + currentMealCount), Ingridient = new List<Ingridient>(), PublicId = currentMealCount };
+                        currentPlan.Meals.Add(newMeal);
+
+                        var filter = Builders<DietDocument>.Filter.And(
+                            Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                            Builders<DietDocument>.Filter.Eq("DailyPlans.Date", date.Date)
+                        );
+
+                        var update = Builders<DietDocument>.Update.Push("DailyPlans.$.Meals", newMeal);
+
+                        await _dietCollection.UpdateOneAsync(filter, update);
+                    }
+                    else
+                    {
+                        var newDailyPlan = new DailyDietPlan
+                        {
+                            Date = date,
+                            Meals = new List<MealPlan> { new MealPlan() { Name = mealName ?? ("Meal" + currentMealCount), Ingridient = new List<Ingridient>(), PublicId = currentMealCount } }
+                        };
+
+                        var update = Builders<DietDocument>.Update.Push(d => d.DailyPlans, newDailyPlan);
+                        await _dietCollection.UpdateOneAsync(d => d.UserId == userId, update);
+                    }
+
+                    return new BasicErrorResponse() { Success = true, ErrorMessage = "Success" };
+                }
+
+                return new BasicErrorResponse() { Success = false, ErrorMessage = "User document not found." };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        private async Task MovePlanToHistory(string userId, DailyDietPlan oldestPlan)
+        {
+            var historyDocument = await _dietHistoryCollection.Find(h => h.UserId == userId).FirstOrDefaultAsync();
+            if (historyDocument == null)
+            {
+                historyDocument = new DietHistoryDocument
+                {
+                    UserId = userId,
+                    DailyPlans = new List<DailyDietPlan>()
+                };
+                await _dietHistoryCollection.InsertOneAsync(historyDocument);
+            }
+
+            var update = Builders<DietHistoryDocument>.Update.Push(h => h.DailyPlans, oldestPlan);
+            await _dietHistoryCollection.UpdateOneAsync(h => h.UserId == userId, update);
+        }
+
+
+
+
+
+
+        //calcs
         public CalorieIntakeVMO CalculateCalories(QuestionaryVM questionary)
         {
             CalorieIntakeVMO output = new CalorieIntakeVMO();

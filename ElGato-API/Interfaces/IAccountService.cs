@@ -11,5 +11,6 @@ namespace ElGato_API.Interfaces
         Task<LoginVMO> LoginUser(LoginVM loginVM);
         Task<IdentityResult> RegisterUser(RegisterWithQuestVM model, CalorieIntakeVMO calorieIntake);
         Task<bool> IsEmailAlreadyUsed(string email);
+
     }
 }

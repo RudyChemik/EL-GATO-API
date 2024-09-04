@@ -6,6 +6,6 @@ namespace ElGato_API.Data.JWT
     {
         string GetUserIdClaim();
         string GenerateJwtToken(IdentityUser user, string email, IList<string> roles);
-
+        string GetUserIdClaimStringBased(string jwt);
     }
 }
