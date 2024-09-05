@@ -58,9 +58,26 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
-        public async Task<IActionResult> GetIngridientByEan() 
+        public async Task<IActionResult> GetIngridientByEan(string ean) 
         {
-            return Ok("ABCD, abcd, aaa");
+            try {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.GetIngridientByEan(ean);
+                if (res.ingridient != null)
+                    return Ok(res.ingridient);
+
+                return StatusCode(400, res.error.ErrorMessage);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
         }
 
         [HttpGet]

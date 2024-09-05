@@ -7,6 +7,8 @@ using ElGato_API.VMO.Questionary;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace ElGato_API.Services
 {
@@ -14,11 +16,13 @@ namespace ElGato_API.Services
     {
         private readonly IMongoCollection<DietDocument> _dietCollection;
         private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
+        private readonly IMongoCollection<ProductDocument> _productCollection;
 
         public DietService(IMongoDatabase database) 
         {
             _dietCollection = database.GetCollection<DietDocument>("DailyDiet");
             _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
+            _productCollection = database.GetCollection<ProductDocument>("products");
         }
 
         public async Task<BasicErrorResponse> AddNewMeal(string userId, string mealName, DateTime date)
@@ -79,21 +83,41 @@ namespace ElGato_API.Services
             }
         }
 
-        private async Task MovePlanToHistory(string userId, DailyDietPlan oldestPlan)
+        public async Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean)
         {
-            var historyDocument = await _dietHistoryCollection.Find(h => h.UserId == userId).FirstOrDefaultAsync();
-            if (historyDocument == null)
+            try
             {
-                historyDocument = new DietHistoryDocument
-                {
-                    UserId = userId,
-                    DailyPlans = new List<DailyDietPlan>()
-                };
-                await _dietHistoryCollection.InsertOneAsync(historyDocument);
-            }
+                var filter = Builders<ProductDocument>.Filter.Eq("code", ean);
+                var existingDocument = await _productCollection.Find(filter).FirstOrDefaultAsync();
 
-            var update = Builders<DietHistoryDocument>.Update.Push(h => h.DailyPlans, oldestPlan);
-            await _dietHistoryCollection.UpdateOneAsync(h => h.UserId == userId, update);
+                if (existingDocument != null)
+                {
+
+                    if (existingDocument.Nutriments == null)
+                    {
+                        return (null, new BasicErrorResponse() { Success = false, ErrorMessage = "No nutritments data found" });
+                    }
+
+                    IngridientVMO ingridient = new IngridientVMO()
+                    {
+                        Name = existingDocument.Product_name,
+                        Id = existingDocument.Id,
+                        Fats = existingDocument.Nutriments.Fat,
+                        Carbs = existingDocument.Nutriments.Carbs,
+                        Proteins = existingDocument.Nutriments.Proteins,
+                        Prep_For = ConvertToDoubleClean(existingDocument.Nutrition_data_prepared_per),
+                        Kcal = existingDocument.Nutriments.EnergyKcal,
+                    };
+
+                    return (ingridient, new BasicErrorResponse() { Success = true });
+                }
+
+                return (null, new BasicErrorResponse() { Success = false, ErrorMessage = "No occurencies" });
+            }
+            catch (Exception ex)
+            {
+                return (null, new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message });
+            }
         }
 
 
@@ -201,11 +225,7 @@ namespace ElGato_API.Services
 
             return output;
         }
-
-        public async Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean)
-        {
-            return (new IngridientVMO(), new BasicErrorResponse() { Success = true, ErrorMessage = "brak" });
-        }
+       
 
         private double calculateBMR(bool isWoman, double Weight, double Height, short Age)
         {
@@ -288,7 +308,40 @@ namespace ElGato_API.Services
             return makros;
         }
 
-        
+        private async Task MovePlanToHistory(string userId, DailyDietPlan oldestPlan)
+        {
+            var historyDocument = await _dietHistoryCollection.Find(h => h.UserId == userId).FirstOrDefaultAsync();
+            if (historyDocument == null)
+            {
+                historyDocument = new DietHistoryDocument
+                {
+                    UserId = userId,
+                    DailyPlans = new List<DailyDietPlan>()
+                };
+                await _dietHistoryCollection.InsertOneAsync(historyDocument);
+            }
+
+            var update = Builders<DietHistoryDocument>.Update.Push(h => h.DailyPlans, oldestPlan);
+            await _dietHistoryCollection.UpdateOneAsync(h => h.UserId == userId, update);
+        }
+
+        private static double ConvertToDoubleClean(string? input)
+        {
+            if (input.IsNullOrEmpty())
+            {
+                return 100;
+            }
+            string cleanInput = Regex.Replace(input, @"[^0-9\.-]", "");
+            try
+            {
+                return Convert.ToDouble(cleanInput, CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return 100;
+            }
+        }
+
     }
 
     public class Makros

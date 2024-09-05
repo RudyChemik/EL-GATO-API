@@ -2,5 +2,20 @@
 {
     public class IngridientVMO
     {
+        public string Name { get; set; }
+        public string Id { get; set; }
+        public double Prep_For { get; set; }
+        public double Proteins { get; set; }
+        public double Carbs { get; set; }
+        public double Fats { get; set; }
+
+        public double Kcal { get; set; }
+        public double EnergyKj
+        {
+            get
+            {
+                return Kcal * 4.18;
+            }
+        }
     }
 }
