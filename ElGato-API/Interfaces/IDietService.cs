@@ -8,8 +8,12 @@ namespace ElGato_API.Interfaces
     {
         //POST
         Task<BasicErrorResponse> AddNewMeal(string userId, string mealName, DateTime date);
+
         //getters
         Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean);
+
+        //del
+        Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date);
 
         CalorieIntakeVMO CalculateCalories(QuestionaryVM questionary);
     }

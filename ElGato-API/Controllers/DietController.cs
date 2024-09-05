@@ -2,6 +2,8 @@
 using ElGato_API.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Formats.Asn1;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Controllers
 {
@@ -43,7 +45,7 @@ namespace ElGato_API.Controllers
                 }
                 catch (Exception ex)
                 {
-                    return StatusCode(500, ex.Message);
+                    return StatusCode(400, ex.Message);
                 }
             }
             catch (Exception ex)
@@ -59,6 +61,47 @@ namespace ElGato_API.Controllers
         public async Task<IActionResult> GetIngridientByEan() 
         {
             return Ok("ABCD, abcd, aaa");
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetListOfCorrelatedItemByName()
+        {
+            return Ok("ABCD, abcd, aaa");
+        }
+
+
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> DeleteMeal(int publicId, DateTime date) 
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                try
+                {
+                    var res = await _dietService.DeleteMeal(userId, publicId, date);
+                    if (!res.Success)
+                        return StatusCode(400, res.ErrorMessage);
+
+                    return Ok();
+                }
+                catch (Exception ex) 
+                {
+                    return StatusCode(400, ex.Message);
+                }
+
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Questionary;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ElGato_API.Services
@@ -41,7 +42,7 @@ namespace ElGato_API.Services
                     var currentPlan = existingDocument.DailyPlans.FirstOrDefault(dp => dp.Date.Date == date.Date);
                     if (currentPlan != null)
                     {
-                        currentMealCount = currentPlan.Meals.Count();
+                        currentMealCount = currentPlan.Meals.Any() ? (currentPlan.Meals.Max(m => m.PublicId) + 1) : 1;
 
                         var newMeal = new MealPlan() { Name = mealName??("Meal" + currentMealCount), Ingridient = new List<Ingridient>(), PublicId = currentMealCount };
                         currentPlan.Meals.Add(newMeal);
@@ -96,6 +97,40 @@ namespace ElGato_API.Services
         }
 
 
+        public async Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date)
+        {
+            try
+            {
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", date.Date)
+                );
+
+                var update = Builders<DietDocument>.Update.PullFilter("DailyPlans.$[dailyPlan].Meals",
+                    Builders<MealPlan>.Filter.Eq(m => m.PublicId, publicId));
+
+                var updateOptions = new UpdateOptions
+                {
+                    ArrayFilters = new List<ArrayFilterDefinition>
+                    {
+                        new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                            new BsonDocument("dailyPlan.Date", date.Date)
+                        )
+                    }
+                };
+
+                var res = await _dietCollection.UpdateOneAsync(filter, update, updateOptions);
+
+                if (res.ModifiedCount > 0)
+                    return new BasicErrorResponse { Success = true };
+                else
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found or could not be removed" };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse { ErrorMessage = ex.Message, Success = false };
+            }
+        }
 
 
 
@@ -253,6 +288,7 @@ namespace ElGato_API.Services
             return makros;
         }
 
+        
     }
 
     public class Makros
