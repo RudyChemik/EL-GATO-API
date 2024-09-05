@@ -3,8 +3,9 @@
     public class Ingridient
     {
         public string Name { get; set; }
-        public int publicId { get; set; }
+        public string publicId { get; set; }
         public double WeightValue { get; set; }
+        public double PrepedFor { get; set; }
         public double Proteins { get; set; }
         public double Carbs { get; set; }
         public double Fats { get; set; }

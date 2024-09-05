@@ -1,6 +1,7 @@
 ﻿using ElGato_API.Interfaces;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Diet.History;
+using ElGato_API.VM.Diet;
 using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Questionary;
@@ -9,6 +10,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -82,6 +84,58 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
             }
         }
+
+        public async Task<BasicErrorResponse> AddIngridientToMeal(string userId, AddIngridientVM model)
+        {
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument == null)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found" };
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.date.Date)
+                );
+
+                //scalee
+                if (model.Ingridient.Prep_For != 100) 
+                {
+                    ScaleNutrition(model.Ingridient);
+                }
+
+                Ingridient ingridient = new Ingridient()
+                {
+                    Carbs = model.Ingridient.Carbs,
+                    Proteins = model.Ingridient.Proteins,
+                    Fats = model.Ingridient.Fats,
+                    EnergyKcal = model.Ingridient.Kcal,
+                    WeightValue = model.WeightValue,
+                    PrepedFor = model.Ingridient.Prep_For,
+                    publicId = model.Ingridient.Id,
+                    Name = model.Ingridient.Name,
+
+                };
+
+                var update = Builders<DietDocument>.Update.Push("DailyPlans.$.Meals.$[meal].Ingridient", ingridient);
+
+                var arrayFilter = new[]
+                {
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("meal.PublicId", model.MealId))
+                };
+
+                var updateResult = await _dietCollection.UpdateOneAsync(filter, update, new UpdateOptions { ArrayFilters = arrayFilter });
+
+                if (updateResult.ModifiedCount == 0)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "No matching meal found for this date" };
+
+                return new BasicErrorResponse() { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
 
         public async Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean)
         {
@@ -389,7 +443,15 @@ namespace ElGato_API.Services
             }
         }
 
-        
+        private void ScaleNutrition(IngridientVMO ingridient)
+        {
+            double scalingFactor = 100 / ingridient.Prep_For;
+
+            ingridient.Carbs *= scalingFactor;
+            ingridient.Proteins *= scalingFactor;
+            ingridient.Fats *= scalingFactor;
+            ingridient.Kcal *= scalingFactor;
+        }
     }
 
     public class Makros
