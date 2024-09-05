@@ -13,7 +13,7 @@
         {
             get
             {
-                return EnergyKcal * 4.18;
+                return Math.Round(EnergyKcal * 4.18, 2);
             }
         }
     }

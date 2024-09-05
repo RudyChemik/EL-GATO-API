@@ -82,9 +82,29 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
-        public async Task<IActionResult> GetListOfCorrelatedItemByName()
+        public async Task<IActionResult> GetListOfCorrelatedItemByName(string name)
         {
-            return Ok("ABCD, abcd, aaa");
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.GetListOfIngridientsByName(name);
+
+                if (res.error.Success)
+                    return Ok(res.ingridients);
+
+                return StatusCode(400, res.error.ErrorMessage);
+
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
         }
 
 

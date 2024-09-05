@@ -14,7 +14,7 @@
         {
             get
             {
-                return Kcal * 4.18;
+                return Math.Round(Kcal * 4.18,2);
             }
         }
     }

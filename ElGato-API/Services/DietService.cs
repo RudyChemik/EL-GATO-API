@@ -120,6 +120,53 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(List<IngridientVMO>? ingridients, BasicErrorResponse error)> GetListOfIngridientsByName(string name)
+        {
+            try
+            {
+                var filter = Builders<ProductDocument>.Filter.Regex("product_name", new BsonRegularExpression(name, "i"));
+                var projection = Builders<ProductDocument>.Projection
+                    .Include("product_name")
+                    .Include("nutriments")
+                    .Include("nutrition_data_prepared_per")
+                    .Include("_id");
+
+                var findOptions = new FindOptions<ProductDocument, BsonDocument>
+                {
+                    Projection = projection
+                };
+
+                var docList = await _productCollection.Find(filter).Project<ProductDocument>(projection).Limit(10).ToListAsync();
+
+                List<IngridientVMO> ingridients = docList
+                    .Where(doc =>
+                        !(doc.Nutriments.Fat == 0 && doc.Nutriments.Carbs == 0 && doc.Nutriments.Proteins == 0) &&
+                        !(doc.Nutriments.EnergyKcal == 0))
+                    .Select(doc => new IngridientVMO
+                    {
+                        Name = doc.Product_name,
+                        Id = doc.Id,
+                        Carbs = doc.Nutriments.Carbs,
+                        Proteins = doc.Nutriments.Proteins,
+                        Fats = doc.Nutriments.Fat,
+                        Prep_For = ConvertToDoubleClean(doc.Nutrition_data_prepared_per),
+                        Kcal = doc.Nutriments.EnergyKcal,
+                    })
+                    .ToList();
+
+                if (ingridients.Count == 0)
+                {
+                    return (null, new BasicErrorResponse() { Success = false, ErrorMessage = "No results found" });
+                }
+
+                return (ingridients, new BasicErrorResponse() { Success = true });
+            }
+            catch (Exception ex)
+            {
+                return (null, new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message });
+            }
+
+        }
 
         public async Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date)
         {
@@ -342,6 +389,7 @@ namespace ElGato_API.Services
             }
         }
 
+        
     }
 
     public class Makros
