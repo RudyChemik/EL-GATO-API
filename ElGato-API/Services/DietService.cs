@@ -1,4 +1,5 @@
 ﻿using ElGato_API.Interfaces;
+using ElGato_API.Models.User;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Diet.History;
 using ElGato_API.VM.Diet;
@@ -92,6 +93,7 @@ namespace ElGato_API.Services
                 var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
                 if (existingDocument == null)
                     return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found" };
+
                 var filter = Builders<DietDocument>.Filter.And(
                     Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
                     Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.date.Date)
@@ -136,6 +138,41 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> AddWater(string userId, int water, DateTime date)
+        {
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument == null)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found" };
+
+                var todayPlan = existingDocument.DailyPlans.FirstOrDefault(p => p.Date.Date == date);
+                if (todayPlan == null)
+                {
+                    todayPlan = new DailyDietPlan
+                    {
+                        Date = date,
+                        Water = water,
+                        Meals = new List<MealPlan>()
+                    };
+                    existingDocument.DailyPlans.Add(todayPlan);
+                }
+                else {
+                    todayPlan.Water += water;
+                }
+
+                var filter = Builders<DietDocument>.Filter.Eq(d => d.UserId, userId);
+                var update = Builders<DietDocument>.Update.Set(d => d.DailyPlans, existingDocument.DailyPlans);
+                await _dietCollection.UpdateOneAsync(filter, update);
+
+                return new BasicErrorResponse() { Success = true };
+
+            }
+            catch (Exception ex) 
+            {
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
 
         public async Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean)
         {
@@ -452,6 +489,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
+       
     }
 
     public class Makros

@@ -1,11 +1,8 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
 using ElGato_API.VM.Diet;
-using ElGato_API.VMO.Diet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Formats.Asn1;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Controllers
 {
@@ -83,6 +80,31 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> AddWater(int water, DateTime date) 
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.AddWater(userId, water, date);
+                if (!res.Success)
+                    return StatusCode(400, res?.ErrorMessage ?? "Something went wrong");
+
+                return Ok();
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
 
         [HttpGet]
         [Authorize(Policy = "user")]
