@@ -359,6 +359,46 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> UpdateMealName(string userId, UpdateMealNameVM model)
+        {
+            try
+            {
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.Date.Date)
+                );
+
+                var update = Builders<DietDocument>.Update.Set("DailyPlans.$[dailyPlan].Meals.$[meal].Name", model.Name);
+
+                var updateOptions = new UpdateOptions
+                {
+                    ArrayFilters = new List<ArrayFilterDefinition>
+                    {
+                        new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                            new BsonDocument("dailyPlan.Date", model.Date.Date)
+                        ),
+                        new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                            new BsonDocument("meal.PublicId", model.MealPublicId)
+                        )
+                    }
+                };
+
+                var res = await _dietCollection.UpdateOneAsync(filter, update, updateOptions);
+
+                if (res.ModifiedCount > 0)
+                {
+                    return new BasicErrorResponse { Success = true };
+                }
+                else
+                {
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found or could not be updated" };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse { ErrorMessage = ex.Message, Success = false };
+            }
+        }
 
 
         //calcs
@@ -554,7 +594,6 @@ namespace ElGato_API.Services
             ingridient.Kcal *= scalingFactor;
         }
 
-        
     }
 
     public class Makros

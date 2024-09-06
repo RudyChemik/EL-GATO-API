@@ -233,10 +233,21 @@ namespace ElGato_API.Controllers
 
         [HttpPatch]
         [Authorize(Policy = "user")]
-        public async Task<IActionResult> UpdateMealName()
+        public async Task<IActionResult> UpdateMealName([FromBody] UpdateMealNameVM model)
         {
             try
             {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.UpdateMealName(userId, model);
+                if (!res.Success)
+                    return BadRequest(res.ErrorMessage);
+
                 return Ok();
             }
             catch (Exception ex)
