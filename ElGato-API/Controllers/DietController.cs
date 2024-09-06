@@ -190,5 +190,60 @@ namespace ElGato_API.Controllers
                 return StatusCode(500, $"An internal error occurred. {ex.Message}");
             }
         }
+
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> RemoveIngridientFromMeal([FromBody] RemoveIngridientVM model) 
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.DeleteIngridientFromMeal(userId, model);
+                if (!res.Success)
+                    return BadRequest(res.ErrorMessage);
+
+                return Ok();
+
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
+
+        [HttpPatch]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> UpdateIngridientWeightValue() 
+        {
+            try
+            {
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
+
+        [HttpPatch]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> UpdateMealName()
+        {
+            try
+            {
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
+
     }
 }

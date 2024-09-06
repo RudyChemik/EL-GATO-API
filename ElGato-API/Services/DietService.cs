@@ -295,6 +295,70 @@ namespace ElGato_API.Services
         }
 
 
+        public async Task<BasicErrorResponse> DeleteIngridientFromMeal(string userId, RemoveIngridientVM model)
+        {
+            try
+            {
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.Date.Date),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Meals.PublicId", model.MealPublicId)
+                );
+
+                var dietDocument = await _dietCollection.Find(filter).FirstOrDefaultAsync();
+
+                if (dietDocument == null)
+                    return new BasicErrorResponse { ErrorMessage = "Meal or ingredient not found.", Success = false };
+
+
+                var dailyPlan = dietDocument.DailyPlans.FirstOrDefault(dp => dp.Date == model.Date.Date);
+                if (dailyPlan == null)
+                    return new BasicErrorResponse { ErrorMessage = "Daily plan not found", Success = false };
+
+                var meal = dailyPlan.Meals.FirstOrDefault(m => m.PublicId == model.MealPublicId);
+                if (meal == null)
+                    return new BasicErrorResponse { ErrorMessage = "Meal not found", Success = false };
+
+
+                var ingredientToRemove = meal.Ingridient
+                    .FirstOrDefault(i => i.publicId == model.IngridientId &&
+                                         i.WeightValue == model.WeightValue &&
+                                         i.Name == model.IngridientName);
+
+                if (ingredientToRemove == null)
+                {
+                    return new BasicErrorResponse { ErrorMessage = "Ingridient not found", Success = false };
+                }
+
+                meal.Ingridient.Remove(ingredientToRemove);
+
+                var update = Builders<DietDocument>.Update.Set("DailyPlans.$[dailyPlan].Meals.$[meal].Ingridient", meal.Ingridient);
+
+                var arrayFilters = new[]
+                {
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("dailyPlan.Date", model.Date.Date)),
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("meal.PublicId", model.MealPublicId))
+                };
+
+                var updateRes = await _dietCollection.UpdateOneAsync(
+                    filter,
+                    update,
+                    new UpdateOptions { ArrayFilters = arrayFilters }
+                );
+
+                if (updateRes.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse { ErrorMessage = "Failed to update", Success = false };
+                }
+
+                return new BasicErrorResponse { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse { ErrorMessage = ex.Message, Success = false };
+            }
+        }
+
 
 
         //calcs
@@ -489,7 +553,8 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-       
+
+        
     }
 
     public class Makros

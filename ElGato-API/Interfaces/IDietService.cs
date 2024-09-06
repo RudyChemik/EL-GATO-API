@@ -18,6 +18,7 @@ namespace ElGato_API.Interfaces
 
         //del
         Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date);
+        Task<BasicErrorResponse> DeleteIngridientFromMeal(string userId, RemoveIngridientVM model);
 
         CalorieIntakeVMO CalculateCalories(QuestionaryVM questionary);
     }
