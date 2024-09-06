@@ -399,6 +399,57 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse { ErrorMessage = ex.Message, Success = false };
             }
         }
+        public async Task<BasicErrorResponse> UpdateIngridientWeightValue(string userId, UpdateIngridientVM model)
+        {
+            try
+            {
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.Date.Date),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Meals.PublicId", model.MealPublicId)
+                );
+
+                var dietDocument = await _dietCollection.Find(filter).FirstOrDefaultAsync();
+
+                if (dietDocument == null)
+                    return new BasicErrorResponse { ErrorMessage = "Meal or ingridient not found", Success = false };
+
+                var dailyPlan = dietDocument.DailyPlans.FirstOrDefault(dp => dp.Date == model.Date.Date);
+                if (dailyPlan == null)
+                    return new BasicErrorResponse { ErrorMessage = "Daily plan not found", Success = false };
+
+                var meal = dailyPlan.Meals.FirstOrDefault(m => m.PublicId == model.MealPublicId);
+                if (meal == null)
+                    return new BasicErrorResponse { ErrorMessage = "Meal not found", Success = false };
+
+                var ingredientToUpdate = meal.Ingridient
+                    .FirstOrDefault(i => i.publicId == model.IngridientId &&
+                                         i.WeightValue == model.IngridientWeightOld &&
+                                         i.Name == model.IngridientName);
+
+                if (ingredientToUpdate == null)
+                    return new BasicErrorResponse { ErrorMessage = "ingridient not found", Success = false };
+
+                ingredientToUpdate.WeightValue = model.IngridientWeightNew;
+
+                var updateResult = await _dietCollection.ReplaceOneAsync(
+                    filter,
+                    dietDocument
+                );
+
+                if (updateResult.MatchedCount == 0)
+                    return new BasicErrorResponse { ErrorMessage = "Failed to update ingridient", Success = false };
+
+                return new BasicErrorResponse { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse { ErrorMessage = ex.Message, Success = false };
+            }
+        }
+
+
+
 
 
         //calcs

@@ -219,10 +219,21 @@ namespace ElGato_API.Controllers
 
         [HttpPatch]
         [Authorize(Policy = "user")]
-        public async Task<IActionResult> UpdateIngridientWeightValue() 
+        public async Task<IActionResult> UpdateIngridientWeightValue([FromBody] UpdateIngridientVM model) 
         {
             try
             {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.UpdateIngridientWeightValue(userId, model);
+                if (!res.Success)
+                    return BadRequest(res.ErrorMessage);
+
                 return Ok();
             }
             catch (Exception ex)
