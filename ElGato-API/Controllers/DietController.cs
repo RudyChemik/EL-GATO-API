@@ -80,6 +80,31 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetUserDietDoc()
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.GetUserDoc(userId);
+                if (!res.errorResponse.Success)
+                    return BadRequest(res.errorResponse?.ErrorMessage ?? "Something went wrong");
+
+                return Ok(res.model);
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
+
         [HttpPost]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> AddWater(int water, DateTime date) 

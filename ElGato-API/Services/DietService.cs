@@ -259,6 +259,33 @@ namespace ElGato_API.Services
 
         }
 
+        public async Task<(BasicErrorResponse errorResponse, DietDocVMO model)> GetUserDoc(string userId)
+        {
+            DietDocVMO model = new DietDocVMO();
+            BasicErrorResponse errorResponse = new BasicErrorResponse() { Success = false };
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument == null) {
+                    errorResponse.ErrorMessage = "document not found";
+                    return (errorResponse, model);
+                }
+
+                foreach (var dailyPlan in existingDocument.DailyPlans) 
+                { 
+                    model.DailyPlans.Add(dailyPlan);
+                }
+
+                errorResponse.Success = true;
+                return (errorResponse, model);
+            }
+            catch (Exception ex) 
+            {
+                errorResponse.ErrorMessage = ex.Message;
+                return (errorResponse, model);
+            }
+        }
+
         public async Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date)
         {
             try
@@ -644,7 +671,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-
+      
     }
 
     public class Makros
