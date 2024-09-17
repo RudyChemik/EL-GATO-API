@@ -16,6 +16,7 @@ namespace ElGato_API.Interfaces
         Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean);
         Task<(List<IngridientVMO>? ingridients, BasicErrorResponse error)> GetListOfIngridientsByName(string name);
         Task<(BasicErrorResponse errorResponse, DietDocVMO model)> GetUserDoc(string userId);
+        Task<(BasicErrorResponse errorResponse, DietDayVMO model)> GetUserDietDay(string userId, DateTime date);
 
         //del
         Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date);

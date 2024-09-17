@@ -286,6 +286,56 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse errorResponse, DietDayVMO model)> GetUserDietDay(string userId, DateTime date)
+        {
+            BasicErrorResponse errorResponse = new BasicErrorResponse() { Success = false };
+            DietDayVMO model = new DietDayVMO();
+
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument == null)
+                {
+                    errorResponse.ErrorMessage = "User diet document not found";
+                    return (errorResponse, model);
+                }
+
+                var dailyPlan = existingDocument.DailyPlans.FirstOrDefault(a => a.Date == date);
+                if (dailyPlan != null)
+                {
+                    model.Date = date;
+                    model.Water = dailyPlan.Water;
+                    model.Meals = dailyPlan.Meals;
+                    model.CalorieCounter = new DailyCalorieCount();
+
+                    foreach (var meal in model.Meals)
+                    {
+                        foreach (var ingr in meal.Ingridient)
+                        {
+                            double factor = ingr.WeightValue / ingr.PrepedFor;
+                            model.CalorieCounter.Protein += (ingr.Proteins * factor);
+                            model.CalorieCounter.Fats += (ingr.Fats * factor);
+                            model.CalorieCounter.Carbs += (ingr.Carbs * factor);
+                            model.CalorieCounter.Kcal += (ingr.EnergyKcal * factor);
+                        }
+                    }
+                    errorResponse.Success = true;
+                }
+                else
+                {
+                    errorResponse.ErrorMessage = "Diet plan for the specified date not found";
+                    return (errorResponse, model);
+                }
+            }
+            catch (Exception ex)
+            {
+                errorResponse.ErrorMessage = ex.Message;
+                return (errorResponse, model);
+            }
+
+            return (errorResponse, model);
+        }
+
         public async Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date)
         {
             try
