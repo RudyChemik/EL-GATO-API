@@ -138,6 +138,64 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> AddIngredientsToMeals(string userId, AddIngridientsVM model)
+        {
+            try
+            {
+                var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (existingDocument == null)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found" };
+
+                var filter = Builders<DietDocument>.Filter.And(
+                    Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                    Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.date.Date)
+                );
+
+                var ingredientsToAdd = new List<Ingridient>();
+
+                foreach (var ingridientVMO in model.Ingridient)
+                {
+                    if (ingridientVMO.Prep_For != 100)
+                    {
+                        ScaleNutrition(ingridientVMO);
+                    }
+
+                    Ingridient ingridient = new Ingridient()
+                    {
+                        Carbs = ingridientVMO.Carbs,
+                        Proteins = ingridientVMO.Proteins,
+                        Fats = ingridientVMO.Fats,
+                        EnergyKcal = ingridientVMO.Kcal,
+                        WeightValue = ingridientVMO.WeightValue,
+                        PrepedFor = ingridientVMO.Prep_For,
+                        publicId = ingridientVMO.Id,
+                        Name = ingridientVMO.Name
+                    };
+
+                    ingredientsToAdd.Add(ingridient);
+                }
+
+                var update = Builders<DietDocument>.Update.PushEach("DailyPlans.$.Meals.$[meal].Ingridient", ingredientsToAdd);
+
+                var arrayFilter = new[]
+                {
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("meal.PublicId", model.MealId))
+                };
+
+                var updateResult = await _dietCollection.UpdateOneAsync(filter, update, new UpdateOptions { ArrayFilters = arrayFilter });
+
+                if (updateResult.ModifiedCount == 0)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "No matching meal found for this date" };
+
+                return new BasicErrorResponse() { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
+
         public async Task<BasicErrorResponse> AddWater(string userId, int water, DateTime date)
         {
             try
@@ -721,7 +779,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-      
+
     }
 
     public class Makros
