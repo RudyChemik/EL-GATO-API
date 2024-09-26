@@ -1,11 +1,13 @@
 using ElGato_API.Data;
 using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
+using ElGato_API.Interfaces.Scrapping;
 using ElGato_API.Models.User;
 using ElGato_API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
@@ -76,6 +78,8 @@ builder.Services.AddScoped<IDietService, DietService>();
 builder.Services.AddScoped<IMongoInits, MongoInits>();
 builder.Services.AddScoped<IUserService, UserService>();
 
+builder.Services.AddScoped<IScrapService, ScrapService>();
+
 //IDENTITY
 builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
@@ -91,6 +95,7 @@ foreach (var role in roles)
         roleManager.CreateAsync(new IdentityRole(role)).Wait();
     }
 }
+
 
 //JWT 
 builder.Services.AddAuthentication(options =>
@@ -133,6 +138,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/MealImages")),
+    RequestPath = "/meal-images"
+});
 
 app.UseHttpsRedirection();
 
