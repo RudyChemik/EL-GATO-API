@@ -1,4 +1,5 @@
-﻿using ElGato_API.Interfaces.Scrapping;
+﻿using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
+using ElGato_API.Interfaces.Scrapping;
 using ElGato_API.ModelsMongo.Meal;
 using HtmlAgilityPack;
 using MongoDB.Driver;
@@ -110,7 +111,7 @@ namespace ElGato_API.Services
 
         public async Task<List<MealsDocument>> ScrapRestInformations(List<ScrapedLinkCons> links)
         {
-            List<MealsDocument> mealList = new List<MealsDocument>();
+            List<MealsDocument> mealList = new List<MealsDocument>();           
 
             foreach (var link in links)
             {
@@ -125,21 +126,29 @@ namespace ElGato_API.Services
                     var doc = new HtmlDocument();
                     doc.LoadHtml(response);
 
+                    var breadcrumbNodes = doc.DocumentNode.SelectNodes("//ul[@id='mntl-universal-breadcrumbs_1-0']//li//span[@class='link__wrapper']");
+                    if (breadcrumbNodes != null)
+                    {
+                        foreach (var node in breadcrumbNodes)
+                        {
+                            listCategory.Add(node.InnerText.Trim());
+                        }
+                    }
+
                     var descriptionNode = doc.DocumentNode.SelectSingleNode("//p[contains(@class, 'article-subheading type--dog')]");
                     var description = descriptionNode?.InnerHtml.Trim();
 
-                    var totalTimeNode = doc.DocumentNode.SelectSingleNode("//div[@class='mntl-recipe-details__item']//div[contains(text(), 'Total Time:')]/following-sibling::div[@class='mntl-recipe-details__value']");
+                    var totalTimeNode = doc.DocumentNode.SelectSingleNode("//div[@class='loc article-content']//div[@class='comp article-content mntl-block']//div[@class='comp mm-recipes-details']//div[@class='mm-recipes-details__content']//div[@class='mm-recipes-details__item']//div[@class='mm-recipes-details__label' and text()='Total Time:']/following-sibling::div[@class='mm-recipes-details__value']");
                     var totalTime = totalTimeNode?.InnerText.Trim();
 
-                    var ingredientNodes = doc.DocumentNode.SelectNodes("//ul[@class='mntl-structured-ingredients__list']/li");
-                    List<string> ingredients = new List<string>();
+                    var ingredientNodes = doc.DocumentNode.SelectNodes("//div[@id='mm-recipes-lrs-ingredients_1-0']//ul[@class='mm-recipes-structured-ingredients__list']/li"); List<string> ingredients = new List<string>();
                     if (ingredientNodes != null)
                     {
                         foreach (var node in ingredientNodes)
                         {
-                            var quantity = node.SelectSingleNode(".//span[@data-ingredient-quantity]")?.InnerText.Trim();
-                            var unit = node.SelectSingleNode(".//span[@data-ingredient-unit]")?.InnerText.Trim();
-                            var name = node.SelectSingleNode(".//span[@data-ingredient-name]")?.InnerText.Trim();
+                            var quantity = node.SelectSingleNode(".//span[@data-ingredient-quantity='true']")?.InnerText.Trim();
+                            var unit = node.SelectSingleNode(".//span[@data-ingredient-unit='true']")?.InnerText.Trim();
+                            var name = node.SelectSingleNode(".//span[@data-ingredient-name='true']")?.InnerText.Trim();
 
                             string ingredient = $"{quantity} {unit} {name}".Trim();
                             ingredients.Add(ingredient);
@@ -212,6 +221,7 @@ namespace ElGato_API.Services
                             Time = totalTime,
                             Description = description,
                             Img = path,
+                            MealsMakro = makro,
                             Link = link.Url,
                             Ingridients = ingredients,
                             IngridientsIds = new List<string>(),
@@ -242,7 +252,6 @@ namespace ElGato_API.Services
                 Console.WriteLine(ex.Message);
             }
         }
-
 
     }
 
