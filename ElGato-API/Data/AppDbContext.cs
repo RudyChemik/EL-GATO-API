@@ -1,4 +1,5 @@
-﻿using ElGato_API.Models.User;
+﻿using ElGato_API.Models.Requests;
+using ElGato_API.Models.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -25,12 +26,15 @@ namespace ElGato_API.Data
              .WithOne(u => u.AppUser)
              .HasForeignKey<CalorieInformation>(ui => ui.UserId);
 
+
             base.OnModelCreating(modelBuilder);
         }
 
         public DbSet<AppUser> AppUser { get; set; }
         public DbSet<UserInformation> UserInformation { get; set; }
         public DbSet<CalorieInformation> CalorieInformation { get; set; }
+        public DbSet<ReportedIngredients> ReportedIngredients { get; set; }
+        public DbSet<AddProductRequest> AddProductRequest { get; set; }
 
     }
 }

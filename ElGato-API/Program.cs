@@ -77,6 +77,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IDietService, DietService>();
 builder.Services.AddScoped<IMongoInits, MongoInits>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserRequestService, UserRequestService>();
 
 builder.Services.AddScoped<IScrapService, ScrapService>();
 

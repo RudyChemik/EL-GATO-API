@@ -9,6 +9,7 @@
         public double Proteins { get; set; }
         public double Carbs { get; set; }
         public double Fats { get; set; }
+        public string? Brand { get; set; }
 
         public double Kcal { get; set; }
         public double EnergyKj

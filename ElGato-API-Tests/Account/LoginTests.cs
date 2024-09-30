@@ -24,7 +24,7 @@ namespace ElGato_API_Tests.Account
         {
             _accountServiceMock = new Mock<IAccountService>();
             _dietServiceMock = new Mock<IDietService>();
-            _controller = new AccountController(_accountServiceMock.Object, _dietServiceMock.Object);
+            //_controller = new AccountController(_accountServiceMock.Object, _dietServiceMock.Object);
         }
 
         [TearDown]

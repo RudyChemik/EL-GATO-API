@@ -19,6 +19,9 @@ namespace ElGato_API.ModelsMongo.Diet
         [BsonElement("nutrition_data_prepared_per")]
         public string? Nutrition_data_prepared_per { get; set; }
 
+        [BsonElement("brands")]
+        public string? Brands {  get; set; }
+
         [BsonElement("nutriments")]
         public NutrimentsDocument Nutriments { get; set; }
 

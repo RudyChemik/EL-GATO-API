@@ -254,6 +254,7 @@ namespace ElGato_API.Services
                         Fats = existingDocument.Nutriments.Fat,
                         Carbs = existingDocument.Nutriments.Carbs,
                         Proteins = existingDocument.Nutriments.Proteins,
+                        Brand = existingDocument.Brands?.Split(',').FirstOrDefault()?.Trim() ?? "",
                         Prep_For = ConvertToDoubleClean(existingDocument.Nutrition_data_prepared_per),
                         Kcal = existingDocument.Nutriments.EnergyKcal,
                     };
@@ -278,6 +279,7 @@ namespace ElGato_API.Services
                     .Include("product_name")
                     .Include("nutriments")
                     .Include("nutrition_data_prepared_per")
+                    .Include("brands")
                     .Include("_id");
 
                 var findOptions = new FindOptions<ProductDocument, BsonDocument>
@@ -298,6 +300,7 @@ namespace ElGato_API.Services
                         Carbs = doc.Nutriments.Carbs,
                         Proteins = doc.Nutriments.Proteins,
                         Fats = doc.Nutriments.Fat,
+                        Brand = doc.Brands?.Split(',').FirstOrDefault()?.Trim() ?? "",
                         Prep_For = ConvertToDoubleClean(doc.Nutrition_data_prepared_per),
                         Kcal = doc.Nutriments.EnergyKcal,
                     })

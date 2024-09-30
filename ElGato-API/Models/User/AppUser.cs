@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using ElGato_API.Models.Requests;
+using Microsoft.AspNetCore.Identity;
 
 namespace ElGato_API.Models.User
 {
