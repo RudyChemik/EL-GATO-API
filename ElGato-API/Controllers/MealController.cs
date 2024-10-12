@@ -19,10 +19,14 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
-        public async Task<IActionResult> GetMealsByName()
+        public async Task<IActionResult> GetStarters()
         {
             try
             {
+                string userId = _jwtService.GetUserIdClaim();
+
+
+
                 return Ok();
             }
             catch (Exception ex) 
