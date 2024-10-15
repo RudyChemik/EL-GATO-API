@@ -28,8 +28,15 @@ builder.Services.AddCors(options =>
 
 //DB CONN sq
 var ConnectionString = builder.Configuration.GetConnectionString("DeafultConnectionString");
-builder.Services.AddScoped<AppDbContext>();
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(ConnectionString));
+
+// Register the DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(ConnectionString));
+
+// Register the DbContextFactory
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+    options.UseSqlServer(ConnectionString), ServiceLifetime.Scoped);
+
 
 //DB CONN MONGO
 var connectionString = builder.Configuration.GetConnectionString("MongoDBConnection");
@@ -83,6 +90,7 @@ builder.Services.AddScoped<IDietService, DietService>();
 builder.Services.AddScoped<IMongoInits, MongoInits>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRequestService, UserRequestService>();
+builder.Services.AddScoped<IMealService, MealService>();
 
 builder.Services.AddScoped<IScrapService, ScrapService>();
 
@@ -150,6 +158,13 @@ app.UseStaticFiles(new StaticFileOptions
     FileProvider = new PhysicalFileProvider(
         Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/MealImages")),
     RequestPath = "/meal-images"
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/UserPfp")),
+    RequestPath = "/pfp-images"
 });
 
 app.UseHttpsRedirection();

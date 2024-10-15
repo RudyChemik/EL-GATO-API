@@ -6,6 +6,9 @@
 # Ignore MealImages folder
 Assets/Images/MealImages/
 
+# Ignore PFP's
+Assets/Images/UserPfp
+
 # Ignore appsettings.json
 appsettings.json
 
