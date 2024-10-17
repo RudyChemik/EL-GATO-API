@@ -5,6 +5,7 @@ using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ElGato_API.Services
@@ -58,6 +59,7 @@ namespace ElGato_API.Services
                     res = meals.Select(meal => new SimpleMealVMO
                     {
                         Id = meal.Id,
+                        StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
@@ -125,6 +127,7 @@ namespace ElGato_API.Services
                     res = meals.Select(meal => new SimpleMealVMO
                     {
                         Id = meal.Id,
+                        StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
@@ -191,7 +194,8 @@ namespace ElGato_API.Services
 
                     res = meals.Select(meal => new SimpleMealVMO
                     {
-                        Id = meal.Id, 
+                        Id = meal.Id,
+                        StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
@@ -234,6 +238,7 @@ namespace ElGato_API.Services
                     res = meals.Select(meal => new SimpleMealVMO
                     {
                         Id = meal.Id,
+                        StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
@@ -274,7 +279,8 @@ namespace ElGato_API.Services
 
                     res = meals.Select(meal => new SimpleMealVMO
                     {
-                        Id = meal.Id, 
+                        Id = meal.Id,
+                        StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
@@ -294,7 +300,6 @@ namespace ElGato_API.Services
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
             }
         }
-
 
         public async Task<(MealLikesDocument res, BasicErrorResponse error)> GetUserMealLikeDoc(string userId)
         {
@@ -319,10 +324,131 @@ namespace ElGato_API.Services
             }
         }
 
-        private bool CheckIfLiked(List<string> liked, string mealId) 
+        public async Task<BasicErrorResponse> LikeMeal(string userId, string mealId)
+        {
+            try
+            {
+                var filter = Builders<MealLikesDocument>.Filter.Eq(x => x.UserId, userId);
+                var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
+
+                ObjectId objectId = new ObjectId(mealId);
+                var mealFilter = Builders<MealsDocument>.Filter.Eq(x => x.Id, objectId);
+                var mealDoc = await _mealsCollection.Find(mealFilter).FirstOrDefaultAsync();
+
+                if (mealDoc == null)
+                {
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found" };
+                }
+
+                int likeCounter = mealDoc.LikedCounter;
+
+                if (doc == null)
+                {
+                    var newMealLikesDocument = new MealLikesDocument
+                    {
+                        UserId = userId,
+                        SavedMeals = new List<string>(),
+                        LikedMeals = new List<string> { mealId }
+                    };
+
+                    await _mealLikesCollection.InsertOneAsync(newMealLikesDocument);
+
+                    likeCounter += 1;
+                    var xmealUpdate = Builders<MealsDocument>.Update.Set(x => x.LikedCounter, likeCounter);
+                    await _mealsCollection.UpdateOneAsync(mealFilter, xmealUpdate);
+
+                    return new BasicErrorResponse { Success = true };
+                }
+
+                if (doc.LikedMeals.Contains(mealId))
+                {
+                    var update = Builders<MealLikesDocument>.Update.Pull(x => x.LikedMeals, mealId);
+                    await _mealLikesCollection.UpdateOneAsync(filter, update);
+                    likeCounter -= 1;
+                }
+                else
+                {
+                    var update = Builders<MealLikesDocument>.Update.Push(x => x.LikedMeals, mealId);
+                    await _mealLikesCollection.UpdateOneAsync(filter, update);
+                    likeCounter += 1;
+                }
+
+                var mealUpdate = Builders<MealsDocument>.Update.Set(x => x.LikedCounter, likeCounter);
+                await _mealsCollection.UpdateOneAsync(mealFilter, mealUpdate);
+
+                return new BasicErrorResponse { Success = true };
+
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse { Success = false, ErrorMessage = $"Internal server error {ex.Message}"};
+            }
+        }
+
+        public async Task<BasicErrorResponse> SaveMeal(string userId, string mealId)
+        {
+            try
+            {
+                var filter = Builders<MealLikesDocument>.Filter.Eq(x => x.UserId, userId);
+                var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
+
+                ObjectId objectId = new ObjectId(mealId);
+                var mealFilter = Builders<MealsDocument>.Filter.Eq(x => x.Id, objectId);
+                var mealDoc = await _mealsCollection.Find(mealFilter).FirstOrDefaultAsync();
+
+                if (mealDoc == null)
+                {
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found" };
+                }
+
+                int saveCounter = mealDoc.SavedCounter;
+
+                if (doc == null)
+                {
+                    var newMealLikesDocument = new MealLikesDocument
+                    {
+                        UserId = userId,
+                        SavedMeals = new List<string> { mealId },
+                        LikedMeals = new List<string>()
+                    };
+
+                    await _mealLikesCollection.InsertOneAsync(newMealLikesDocument);
+
+                    saveCounter += 1;
+                    var xmealUpdate = Builders<MealsDocument>.Update.Set(x => x.SavedCounter, saveCounter);
+                    await _mealsCollection.UpdateOneAsync(mealFilter, xmealUpdate);
+
+                    return new BasicErrorResponse { Success = true };
+                }
+
+                if (doc.SavedMeals.Contains(mealId))
+                {
+                    var update = Builders<MealLikesDocument>.Update.Pull(x => x.SavedMeals, mealId);
+                    await _mealLikesCollection.UpdateOneAsync(filter, update);
+                    saveCounter -= 1;
+                }
+                else
+                {
+                    var update = Builders<MealLikesDocument>.Update.Push(x => x.SavedMeals, mealId);
+                    await _mealLikesCollection.UpdateOneAsync(filter, update);
+                    saveCounter += 1;
+                }
+
+                var mealUpdate = Builders<MealsDocument>.Update.Set(x => x.SavedCounter, saveCounter);
+                await _mealsCollection.UpdateOneAsync(mealFilter, mealUpdate);
+
+                return new BasicErrorResponse { Success = true };
+            }
+            catch (Exception ex) 
+            {
+                return new BasicErrorResponse { Success = false, ErrorMessage = $"Interna lserver error {ex.Message}" };
+            }
+        }
+
+        private bool CheckIfLiked(List<string> liked, string mealId)
         {
             return liked != null && liked.Contains(mealId);
         }
-       
+
     }
 }

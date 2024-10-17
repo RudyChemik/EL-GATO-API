@@ -5,6 +5,7 @@ namespace ElGato_API.VMO.Meals
     public class SimpleMealVMO
     {
         public ObjectId Id { get; set; }
+        public string StringId { get; set; }
         public string Name { get; set; }
         public string Time { get; set; }
         public string Img { get; set; }

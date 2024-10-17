@@ -13,5 +13,7 @@ namespace ElGato_API.Interfaces
         Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetRandom(List<string> LikedMeals, List<string> SavedMeals, int? qty = 5);
 
         Task<(MealLikesDocument res, BasicErrorResponse error)> GetUserMealLikeDoc(string userId);
+        Task<BasicErrorResponse> LikeMeal(string userId, string mealId);
+        Task<BasicErrorResponse> SaveMeal(string userId, string mealId);
     }
 }
