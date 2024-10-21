@@ -556,6 +556,116 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserLikedMeals(string userId)
+        {
+            List<SimpleMealVMO> res = new List<SimpleMealVMO>();
+
+            try
+            {
+                var filter = Builders<MealLikesDocument>.Filter.Eq(x => x.UserId, userId);
+                var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
+                if (doc == null)
+                {
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document null." }, res);
+                }
+
+                var likedMealIds = doc.LikedMeals.Select(ObjectId.Parse).ToList();
+                var mealsFilter = Builders<MealsDocument>.Filter.In(x => x.Id, likedMealIds);
+                var likedMeals = await _mealsCollection.Find(mealsFilter).ToListAsync();
+
+                if (likedMeals == null || !likedMeals.Any())
+                {
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for liked meals." }, res);
+                }
+
+                var userIds = likedMeals.Select(meal => meal.UserId).Distinct().ToList();
+
+                using (var _context = _contextFactory.CreateDbContext())
+                {
+                    var users = await _context.AppUser
+                                              .Where(user => userIds.Contains(user.Id))
+                                              .ToDictionaryAsync(user => user.Id, user => new { user.Name, user.Pfp });
+
+                    res = likedMeals.Select(meal => new SimpleMealVMO
+                    {
+                        Id = meal.Id,
+                        StringId = meal.Id.ToString(),
+                        Name = meal.Name,
+                        Time = meal.Time,
+                        Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
+                        SavedCounter = meal.SavedCounter,
+                        LikedCounter = meal.LikedCounter,
+                        CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
+                        CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
+                        Liked = true, 
+                        Saved = doc.SavedMeals.Contains(meal.Id.ToString()) 
+                    }).ToList();
+                }
+
+                return (new BasicErrorResponse() { Success = true }, res);
+            }
+            catch (Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}" }, res);
+            }
+        }
+
+
+        public async Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserSavedMeals(string userId)
+        {
+            List<SimpleMealVMO> res = new List<SimpleMealVMO>();
+
+            try
+            {
+                var filter = Builders<MealLikesDocument>.Filter.Eq(x => x.UserId, userId);
+                var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
+                if (doc == null)
+                {
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null." }, res);
+                }
+
+                var savedMealIds = doc.SavedMeals.Select(ObjectId.Parse).ToList();
+                var mealsFilter = Builders<MealsDocument>.Filter.In(x => x.Id, savedMealIds);
+                var savedMeals = await _mealsCollection.Find(mealsFilter).ToListAsync();
+
+                if (savedMeals == null || !savedMeals.Any())
+                {
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for saved meals." }, res);
+                }
+
+                var userIds = savedMeals.Select(meal => meal.UserId).Distinct().ToList();
+
+                using (var _context = _contextFactory.CreateDbContext())
+                {
+                    var users = await _context.AppUser
+                                              .Where(user => userIds.Contains(user.Id))
+                                              .ToDictionaryAsync(user => user.Id, user => new { user.Name, user.Pfp });
+
+                    res = savedMeals.Select(meal => new SimpleMealVMO
+                    {
+                        Id = meal.Id,
+                        StringId = meal.Id.ToString(),
+                        Name = meal.Name,
+                        Time = meal.Time,
+                        Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
+                        SavedCounter = meal.SavedCounter,
+                        LikedCounter = meal.LikedCounter,
+                        CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
+                        CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
+                        Liked = doc.LikedMeals.Contains(meal.Id.ToString()), 
+                        Saved = true 
+                    }).ToList();
+                }
+
+                return (new BasicErrorResponse() { Success = true }, res);
+            }
+            catch (Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}" }, res);
+            }
+        }
 
 
         private bool CheckIfLiked(List<string> liked, string mealId)
@@ -591,6 +701,7 @@ namespace ElGato_API.Services
 
             return totalMinutes;
         }
+
         public class UserData
         {
             public string Name { get; set; }

@@ -17,6 +17,9 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> LikeMeal(string userId, string mealId);
         Task<BasicErrorResponse> SaveMeal(string userId, string mealId);
 
+        Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserLikedMeals(string userId);
+        Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserSavedMeals(string userId);
+
         Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> Search(string userId, SearchMealVM model);
     }
 }

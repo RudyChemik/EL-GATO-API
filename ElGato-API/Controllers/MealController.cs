@@ -81,6 +81,41 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetLikedMeals()
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+                List<SimpleMealVMO> res = new List<SimpleMealVMO>();
+                var tasks = new[]
+                {
+                    _mealService.GetUserLikedMeals(userId),
+                    _mealService.GetUserSavedMeals(userId),
+                };
+
+                var results = await Task.WhenAll(tasks);
+
+                foreach (var (error, ress) in results)
+                {
+                    if (!error.Success)
+                    {
+                        return StatusCode(400, error.ErrorMessage);
+                    }
+                }
+
+                res.AddRange(results[0].res);
+                res.AddRange(results[1].res);
+
+                return Ok(res);
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"Internal server error. {ex.Message}");
+            }
+        }
+
         [HttpPost]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> LikeMeal(string mealId)
