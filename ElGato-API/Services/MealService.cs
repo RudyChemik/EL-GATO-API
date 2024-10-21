@@ -2,6 +2,7 @@
 using ElGato_API.Interfaces;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Meal;
+using ElGato_API.VM.Meal;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +64,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -131,6 +133,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -199,6 +202,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -242,6 +246,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -284,6 +289,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -445,9 +451,150 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> Search(string userId, SearchMealVM model)
+        {
+            List<SimpleMealVMO> res = new List<SimpleMealVMO>();
+            Dictionary<string, UserData> users = new Dictionary<string, UserData>();
+
+            try
+            {
+                var filterBuilder = Builders<MealsDocument>.Filter;
+                var filters = new List<FilterDefinition<MealsDocument>>();
+
+                if (string.IsNullOrEmpty(model.Phrase))
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "Searching phrase cannot be null" }, res);
+
+                var phraseFilter = filterBuilder.Or(
+                    filterBuilder.Regex("Name", new BsonRegularExpression(model.Phrase, "i")), 
+                    filterBuilder.Regex("Ingredients", new BsonRegularExpression(model.Phrase, "i"))
+                );
+                filters.Add(phraseFilter);
+
+                if (model.Nutritions != null)
+                {
+                    filters.Add(filterBuilder.Gte("MealsMakro.Protein", model.Nutritions.MinimalProtein));
+                    filters.Add(filterBuilder.Lte("MealsMakro.Protein", model.Nutritions.MaximalProtein));
+                    filters.Add(filterBuilder.Gte("MealsMakro.Fats", model.Nutritions.MinimumFats));
+                    filters.Add(filterBuilder.Lte("MealsMakro.Fats", model.Nutritions.MaximumFats));
+                    filters.Add(filterBuilder.Gte("MealsMakro.Carbs", model.Nutritions.MinimumCarbs));
+                    filters.Add(filterBuilder.Lte("MealsMakro.Carbs", model.Nutritions.MaximumCarbs));
+                }
+
+                var combinedFilters = filterBuilder.And(filters);
+
+                var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); // Default
+                switch (model.SortValue)
+                {
+                    case 1:
+                        sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); // A-Z
+                        break;
+                    case 2:
+                        sortDefinition = Builders<MealsDocument>.Sort.Descending("Name"); // Z-A
+                        break;
+                    case 3:
+                        sortDefinition = Builders<MealsDocument>.Sort.Descending("LikedCounter"); // Mostlikes
+                        break;
+                    case 4:
+                        sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Kcal"); // Kcal inc
+                        break;
+                    case 5:
+                        sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Kcal"); // Kcal dec
+                        break;
+                }
+
+                int skip = (model.PageNumber.Value - 1) * model.Qty.Value;
+
+                var meals = await _mealsCollection.Find(combinedFilters)
+                 .Sort(sortDefinition)
+                 .Skip(skip)
+                 .Limit(model.Qty.Value)
+                 .ToListAsync();
+
+                if (model.SearchTimeRange != null)
+                {
+                    meals = meals.Where(m =>
+                        ConvertTimeStringToMinutes(m.Time) >= model.SearchTimeRange.MinimalTime &&
+                        ConvertTimeStringToMinutes(m.Time) <= model.SearchTimeRange.MaximumTime
+                    ).ToList();
+                }
+
+                var userIds = meals.Select(meal => meal.UserId).Distinct().ToList();
+
+                using (var _context = _contextFactory.CreateDbContext())
+                {
+                    users = await _context.AppUser
+                                        .Where(user => userIds.Contains(user.Id))
+                                        .ToDictionaryAsync(user => user.Id, user => new UserData { Name = user.Name, Pfp = user.Pfp });
+                }
+
+                var userLikesDoc = await _mealLikesCollection.Find(l => l.UserId == userId).FirstOrDefaultAsync();
+                var likedMeals = userLikesDoc?.LikedMeals ?? new List<string>();
+                var savedMeals = userLikesDoc?.SavedMeals ?? new List<string>();
+
+                res = meals.Select(meal => new SimpleMealVMO
+                {
+                    Id = meal.Id,
+                    StringId = meal.Id.ToString(),
+                    Name = meal.Name,
+                    Time = meal.Time,
+                    Img = meal.Img,
+                    Kcal = meal.MealsMakro.Kcal,
+                    SavedCounter = meal.SavedCounter,
+                    LikedCounter = meal.LikedCounter,
+                    CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
+                    CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
+                    Liked = likedMeals.Contains(meal.Id.ToString()),  
+                    Saved = savedMeals.Contains(meal.Id.ToString())  
+                }).ToList();
+
+                return (new BasicErrorResponse() { Success = true }, res);
+
+            }
+            catch (Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}" }, res);
+            }
+        }
+
+
+
         private bool CheckIfLiked(List<string> liked, string mealId)
         {
             return liked != null && liked.Contains(mealId);
+        }
+
+        private int ConvertTimeStringToMinutes(string timeString)
+        {
+            int totalMinutes = 0;
+            string[] timeParts = timeString.ToLower().Split(' ');
+
+            for (int i = 0; i < timeParts.Length; i++)
+            {
+                if (timeParts[i].Contains("day"))
+                {
+                    if (int.TryParse(timeParts[i - 1], out int days))
+                        totalMinutes += days * 24 * 60;
+                }
+
+                if (timeParts[i].Contains("hour") || timeParts[i].Contains("hrs") || timeParts[i].Contains("hr"))
+                {
+                    if (int.TryParse(timeParts[i - 1], out int hours))
+                        totalMinutes += hours * 60;
+                }
+
+                if (timeParts[i].Contains("min"))
+                {
+                    if (int.TryParse(timeParts[i - 1], out int minutes))
+                        totalMinutes += minutes;
+                }
+            }
+
+            return totalMinutes;
+        }
+        public class UserData
+        {
+            public string Name { get; set; }
+            public string Pfp { get; set; }
         }
 
     }

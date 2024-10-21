@@ -9,6 +9,7 @@ namespace ElGato_API.VMO.Meals
         public string Name { get; set; }
         public string Time { get; set; }
         public string Img { get; set; }
+        public double Kcal { get; set; }
         public int SavedCounter { get; set; } = 0;
         public int LikedCounter { get; set; } = 0;
         public string CreatorName { get; set; }

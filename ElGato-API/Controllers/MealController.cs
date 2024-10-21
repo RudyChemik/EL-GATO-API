@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
+using ElGato_API.VM.Meal;
 using ElGato_API.VMO.Meals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -119,6 +120,27 @@ namespace ElGato_API.Controllers
                 return Ok();
             }
             catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> Search(SearchMealVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                var res = await _mealService.Search(userId, model);
+                if (!res.error.Success) {
+                    return StatusCode(400, $"something went wrong while trying to perform searchn. {res.error.ErrorMessage}");
+                }
+
+                return Ok(res.res);
+            }
+            catch (Exception ex) 
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }

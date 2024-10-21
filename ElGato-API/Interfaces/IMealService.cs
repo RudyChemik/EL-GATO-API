@@ -1,4 +1,5 @@
 ﻿using ElGato_API.ModelsMongo.Meal;
+using ElGato_API.VM.Meal;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 
@@ -15,5 +16,7 @@ namespace ElGato_API.Interfaces
         Task<(MealLikesDocument res, BasicErrorResponse error)> GetUserMealLikeDoc(string userId);
         Task<BasicErrorResponse> LikeMeal(string userId, string mealId);
         Task<BasicErrorResponse> SaveMeal(string userId, string mealId);
+
+        Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> Search(string userId, SearchMealVM model);
     }
 }
