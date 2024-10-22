@@ -461,14 +461,14 @@ namespace ElGato_API.Services
                 var filterBuilder = Builders<MealsDocument>.Filter;
                 var filters = new List<FilterDefinition<MealsDocument>>();
 
-                if (string.IsNullOrEmpty(model.Phrase))
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "Searching phrase cannot be null" }, res);
-
-                var phraseFilter = filterBuilder.Or(
-                    filterBuilder.Regex("Name", new BsonRegularExpression(model.Phrase, "i")), 
-                    filterBuilder.Regex("Ingredients", new BsonRegularExpression(model.Phrase, "i"))
-                );
-                filters.Add(phraseFilter);
+                if (!string.IsNullOrEmpty(model.Phrase))
+                {
+                    var phraseFilter = filterBuilder.Or(
+                        filterBuilder.Regex("Name", new BsonRegularExpression(model.Phrase, "i")),
+                        filterBuilder.Regex("Ingredients", new BsonRegularExpression(model.Phrase, "i"))
+                    );
+                    filters.Add(phraseFilter);
+                }
 
                 if (model.Nutritions != null)
                 {
@@ -480,7 +480,7 @@ namespace ElGato_API.Services
                     filters.Add(filterBuilder.Lte("MealsMakro.Carbs", model.Nutritions.MaximumCarbs));
                 }
 
-                var combinedFilters = filterBuilder.And(filters);
+                var combinedFilters = filters.Count > 0 ? filterBuilder.And(filters) : filterBuilder.Empty;
 
                 var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); // Default
                 switch (model.SortValue)
