@@ -482,33 +482,40 @@ namespace ElGato_API.Services
 
                 var combinedFilters = filters.Count > 0 ? filterBuilder.And(filters) : filterBuilder.Empty;
 
-                var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); // Default
-                switch (model.SortValue)
-                {
-                    case 1:
-                        sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); // A-Z
-                        break;
-                    case 2:
-                        sortDefinition = Builders<MealsDocument>.Sort.Descending("Name"); // Z-A
-                        break;
-                    case 3:
-                        sortDefinition = Builders<MealsDocument>.Sort.Descending("LikedCounter"); // Mostlikes
-                        break;
-                    case 4:
-                        sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Kcal"); // Kcal inc
-                        break;
-                    case 5:
-                        sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Kcal"); // Kcal dec
-                        break;
-                }
-
                 int skip = (model.PageNumber.Value - 1) * model.Qty.Value;
 
-                var meals = await _mealsCollection.Find(combinedFilters)
-                 .Sort(sortDefinition)
-                 .Skip(skip)
-                 .Limit(model.Qty.Value)
-                 .ToListAsync();
+                List<MealsDocument> meals;
+                if (model.SortValue == 0 && string.IsNullOrEmpty(model.Phrase))
+                {
+                    meals = await _mealsCollection.Aggregate()
+                        .Match(combinedFilters)
+                        .AppendStage<MealsDocument>("{ $sample: { size: " + model.Qty.Value + " } }")
+                        .ToListAsync();
+                }
+                else
+                {
+                    var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); //def for phrasing
+                    switch (model.SortValue)
+                    {
+                        case 1: sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); break;
+                        case 2: sortDefinition = Builders<MealsDocument>.Sort.Descending("Name"); break;
+                        case 3: sortDefinition = Builders<MealsDocument>.Sort.Descending("LikedCounter"); break;
+                        case 4: sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Kcal"); break;
+                        case 5: sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Kcal"); break;
+                        case 6: sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Protein"); break;
+                        case 7: sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Protein"); break;
+                        case 8: sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Fats"); break;
+                        case 9: sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Fats"); break;
+                        case 10: sortDefinition = Builders<MealsDocument>.Sort.Ascending("MealsMakro.Carbs"); break;
+                        case 11: sortDefinition = Builders<MealsDocument>.Sort.Descending("MealsMakro.Carbs"); break;
+                    }
+
+                    meals = await _mealsCollection.Find(combinedFilters)
+                        .Sort(sortDefinition)
+                        .Skip(skip)
+                        .Limit(model.Qty.Value)
+                        .ToListAsync();
+                }
 
                 if (model.SearchTimeRange != null)
                 {
@@ -543,8 +550,8 @@ namespace ElGato_API.Services
                     LikedCounter = meal.LikedCounter,
                     CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                     CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
-                    Liked = likedMeals.Contains(meal.Id.ToString()),  
-                    Saved = savedMeals.Contains(meal.Id.ToString())  
+                    Liked = likedMeals.Contains(meal.Id.ToString()),
+                    Saved = savedMeals.Contains(meal.Id.ToString())
                 }).ToList();
 
                 return (new BasicErrorResponse() { Success = true }, res);
@@ -555,6 +562,7 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}" }, res);
             }
         }
+
 
         public async Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserLikedMeals(string userId)
         {
