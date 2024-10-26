@@ -472,12 +472,20 @@ namespace ElGato_API.Services
 
                 if (model.Nutritions != null)
                 {
+                    filters.Add(filterBuilder.Gte("MealsMakro.Kcal", model.Nutritions.MinimalCalories));
+                    filters.Add(filterBuilder.Lte("MealsMakro.Kcal", model.Nutritions.MaximalCalories));
                     filters.Add(filterBuilder.Gte("MealsMakro.Protein", model.Nutritions.MinimalProtein));
                     filters.Add(filterBuilder.Lte("MealsMakro.Protein", model.Nutritions.MaximalProtein));
                     filters.Add(filterBuilder.Gte("MealsMakro.Fats", model.Nutritions.MinimumFats));
                     filters.Add(filterBuilder.Lte("MealsMakro.Fats", model.Nutritions.MaximumFats));
                     filters.Add(filterBuilder.Gte("MealsMakro.Carbs", model.Nutritions.MinimumCarbs));
                     filters.Add(filterBuilder.Lte("MealsMakro.Carbs", model.Nutritions.MaximumCarbs));
+                }
+
+                if (model.SearchTimeRange != null)
+                {
+                    filters.Add(filterBuilder.Gte("TimeMinutes", model.SearchTimeRange.MinimalTime));
+                    filters.Add(filterBuilder.Lte("TimeMinutes", model.SearchTimeRange.MaximumTime));
                 }
 
                 var combinedFilters = filters.Count > 0 ? filterBuilder.And(filters) : filterBuilder.Empty;
@@ -494,7 +502,7 @@ namespace ElGato_API.Services
                 }
                 else
                 {
-                    var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); //def for phrasing
+                    var sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name");
                     switch (model.SortValue)
                     {
                         case 1: sortDefinition = Builders<MealsDocument>.Sort.Ascending("Name"); break;
@@ -515,14 +523,6 @@ namespace ElGato_API.Services
                         .Skip(skip)
                         .Limit(model.Qty.Value)
                         .ToListAsync();
-                }
-
-                if (model.SearchTimeRange != null)
-                {
-                    meals = meals.Where(m =>
-                        ConvertTimeStringToMinutes(m.Time) >= model.SearchTimeRange.MinimalTime &&
-                        ConvertTimeStringToMinutes(m.Time) <= model.SearchTimeRange.MaximumTime
-                    ).ToList();
                 }
 
                 var userIds = meals.Select(meal => meal.UserId).Distinct().ToList();
@@ -562,6 +562,7 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}" }, res);
             }
         }
+
 
 
         public async Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserLikedMeals(string userId)

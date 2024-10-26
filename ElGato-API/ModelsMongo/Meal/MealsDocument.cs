@@ -11,6 +11,7 @@ namespace ElGato_API.ModelsMongo.Meal
         public string Description { get; set; }
         public string Img { get; set; }
         public string Link { get; set; }
+        public double TimeMinutes { get; set; }
         public List<string> Ingridients { get; set; }
         public List<string>? IngridientsIds { get; set; }
         public List<string> Categories { get; set; }

@@ -11,13 +11,15 @@
     }
 
     public class SearchNutritions 
-    { 
+    {
+        public double MinimalCalories { get; set; } = 0;
+        public double MaximalCalories { get; set; } = 9999;
         public double MinimalProtein { get; set; } = 0;
-        public double MaximalProtein { get;set; } = 1000;
+        public double MaximalProtein { get;set; } = 9999;
         public double MinimumFats { get; set; } = 0;
-        public double MaximumFats { get; set; } = 1000;
+        public double MaximumFats { get; set; } = 9999;
         public double MinimumCarbs { get; set; } = 0;
-        public double MaximumCarbs { get; set; } = 1000;
+        public double MaximumCarbs { get; set; } = 9999;
     }
 
     public class SearchTimeRange 
