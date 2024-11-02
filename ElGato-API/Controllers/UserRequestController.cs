@@ -45,6 +45,31 @@ namespace ElGato_API.Controllers
 
         [HttpPost]
         [Authorize(Policy = "user")]
+        public async Task<IActionResult> ReportMealRequest([FromBody] ReportMealRequestVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _requestService.RequestReportMeal(userId, model);
+                if (!res.Success)
+                    return StatusCode(400, $"failed, {res.ErrorMessage}");
+
+                return Ok();
+
+            }catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+            
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
         public async Task<IActionResult> AddIngredientRequest([FromBody] AddProductRequestVM model)
         {
             try

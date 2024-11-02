@@ -7,5 +7,6 @@ namespace ElGato_API.Interfaces
     {
         Task<BasicErrorResponse> RequestAddIngredient(string userId, AddProductRequestVM model);
         Task<BasicErrorResponse> RequestReportIngredient(string userId, IngredientReportRequestVM model);
+        Task<BasicErrorResponse> RequestReportMeal(string userId, ReportMealRequestVM model);
     }
 }

@@ -35,6 +35,7 @@ namespace ElGato_API.Data
         public DbSet<CalorieInformation> CalorieInformation { get; set; }
         public DbSet<ReportedIngredients> ReportedIngredients { get; set; }
         public DbSet<AddProductRequest> AddProductRequest { get; set; }
+        public DbSet<ReportedMeals> ReportedMeals { get; set; }
 
     }
 }

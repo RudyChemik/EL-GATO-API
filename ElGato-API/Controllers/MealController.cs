@@ -82,7 +82,7 @@ namespace ElGato_API.Controllers
             }
         }
 
-        [HttpGet]
+        [HttpPost]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> GetExtendedStarters(ExtendedStartersVM model)
         {

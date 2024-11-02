@@ -51,6 +51,7 @@ namespace ElGato_API.Services
                     UserId = userId,
                     IngredientId = model.IngredientId
                 };
+
                 _context.ReportedIngredients.Add(request);
                 await _context.SaveChangesAsync();
 
@@ -60,6 +61,29 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull. {ex.Message}", Success = false };
             }
         
+        }
+
+        public async Task<BasicErrorResponse> RequestReportMeal(string userId, ReportMealRequestVM model)
+        {
+            try
+            {
+                ReportedMeals request = new ReportedMeals()
+                {
+                    Cause= model.Cause,
+                    MealId = model.MealId,
+                    MealName = model.MealName,
+                    UserId=userId,
+                };
+
+                _context.ReportedMeals.Add(request);
+                await _context.SaveChangesAsync();
+
+                return new BasicErrorResponse() { Success = true };
+            }
+            catch (Exception ex) 
+            {
+                return new BasicErrorResponse() { ErrorMessage = $"Request not succedull, internal error {ex.Message}", Success = false };
+            }
         }
     }
 }
