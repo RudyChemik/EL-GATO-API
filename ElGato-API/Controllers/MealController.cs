@@ -1,6 +1,7 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
 using ElGato_API.VM.Meal;
+using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,10 +43,10 @@ namespace ElGato_API.Controllers
                     _mealService.GetByMainCategory(UserLikes, UserSaves, "Breakfast", 5),
                     _mealService.GetByMainCategory(UserLikes, UserSaves, "Main", 5),
                     _mealService.GetByMainCategory(UserLikes, UserSaves, "Side", 5),
-                    _mealService.GetByHighMakro(UserLikes, UserSaves, "protein"),
-                    _mealService.GetByHighMakro(UserLikes, UserSaves, "carbs"),
-                    _mealService.GetByLowMakro(UserLikes, UserSaves, "carbs"),
-                    _mealService.GetByLowMakro(UserLikes, UserSaves, "fats"),
+                    _mealService.GetByHighMakro(UserLikes, UserSaves, "protein", 5),
+                    _mealService.GetByHighMakro(UserLikes, UserSaves, "carbs", 5),
+                    _mealService.GetByLowMakro(UserLikes, UserSaves, "carbs", 5),
+                    _mealService.GetByLowMakro(UserLikes, UserSaves, "fats", 5),
                     _mealService.GetMostLiked(UserLikes, UserSaves, 5),
                     _mealService.GetRandom(UserLikes, UserSaves, 5)
                 };
@@ -83,6 +84,102 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetExtendedStarters(ExtendedStartersVM model)
+        {
+            try
+            {
+                List<string> UserLikes = new List<string>();
+                List<string> UserSaves = new List<string>();
+
+                string userId = _jwtService.GetUserIdClaim();
+                var userLikesDoc = await _mealService.GetUserMealLikeDoc(userId);
+
+                if (userLikesDoc.error.Success)
+                {
+                    UserLikes = userLikesDoc.res.LikedMeals;
+                    UserSaves = userLikesDoc.res.SavedMeals;
+                }
+
+                List<SimpleMealVMO> mealList = new List<SimpleMealVMO>();
+                switch (model.Type)
+                {
+                    case "Most Liked":
+                        var likedMealRes = await _mealService.GetMostLiked(UserLikes, UserSaves, model.pageSize, model.page);
+                        if (!likedMealRes.error.Success)
+                            return StatusCode(400, $"Error while fetching liked data {likedMealRes.error.ErrorMessage}");
+                        mealList.AddRange(likedMealRes.res);
+                        break;
+                    case "All":
+                        var rndMealRes = await _mealService.GetRandom(UserLikes, UserSaves, model.pageSize, model.page);
+                        if (!rndMealRes.error.Success)
+                            return StatusCode(400, $"Error while fetching rnd data {rndMealRes.error.ErrorMessage}");
+                        mealList.AddRange(rndMealRes.res);
+                        break;
+
+                    case "Breakfast":
+                        var breakfastRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Breakfast", model.pageSize, model.page);
+                        if (!breakfastRes.error.Success)
+                            return StatusCode(400, $"Error while fetching breakfast data {breakfastRes.error.ErrorMessage}");
+                        mealList.AddRange(breakfastRes.res);
+                        break;
+
+                    case "Side Dish":
+                        var sideDishRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Side", model.pageSize, model.page);
+                        if (!sideDishRes.error.Success)
+                            return StatusCode(400, $"Error while fetching side dish data {sideDishRes.error.ErrorMessage}");
+                        mealList.AddRange(sideDishRes.res);
+                        break;
+
+                    case "Main Dish":
+                        var mainDishRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Main", model.pageSize, model.page);
+                        if (!mainDishRes.error.Success)
+                            return StatusCode(400, $"Error while fetching main dish data {mainDishRes.error.ErrorMessage}");
+                        mealList.AddRange(mainDishRes.res);
+                        break;
+
+                    case "High Protein":
+                        var highProteinRes = await _mealService.GetByHighMakro(UserLikes, UserSaves, "protein", model.pageSize, model.page);
+                        if (!highProteinRes.error.Success)
+                            return StatusCode(400, $"Error while fetching high protein data {highProteinRes.error.ErrorMessage}");
+                        mealList.AddRange(highProteinRes.res);
+                        break;
+
+                    case "Low Carbs":
+                        var lowCarbsRes = await _mealService.GetByLowMakro(UserLikes, UserSaves, "carbs", model.pageSize, model.page);
+                        if (!lowCarbsRes.error.Success)
+                            return StatusCode(400, $"Error while fetching low carbs data {lowCarbsRes.error.ErrorMessage}");
+                        mealList.AddRange(lowCarbsRes.res);
+                        break;
+
+                    case "High Carbs":
+                        var highCarbsRes = await _mealService.GetByHighMakro(UserLikes, UserSaves, "carbs", model.pageSize, model.page);
+                        if (!highCarbsRes.error.Success)
+                            return StatusCode(400, $"Error while fetching high carbs data {highCarbsRes.error.ErrorMessage}");
+                        mealList.AddRange(highCarbsRes.res);
+                        break;
+
+                    case "Low Fat":
+                        var lowFatRes = await _mealService.GetByLowMakro(UserLikes, UserSaves, "fats", model.pageSize, model.page);
+                        if (!lowFatRes.error.Success)
+                            return StatusCode(400, $"Error while fetching low fat data {lowFatRes.error.ErrorMessage}");
+                        mealList.AddRange(lowFatRes.res);
+                        break;
+
+                    default:
+                        return BadRequest("Invalid type specified");
+                };
+
+                return Ok(mealList);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "user")]
         public async Task<IActionResult> GetLikedMeals()
         {
             try
@@ -105,10 +202,10 @@ namespace ElGato_API.Controllers
                     }
                 }
 
-                res.AddRange(results[0].res);
-                res.AddRange(results[1].res);
+                HashSet<SimpleMealVMO> uniqueMeals = new HashSet<SimpleMealVMO>(results[0].res);
+                uniqueMeals.UnionWith(results[1].res);
 
-                return Ok(res);
+                return Ok(uniqueMeals.ToList());
             }
             catch (Exception ex) 
             {
@@ -183,3 +280,4 @@ namespace ElGato_API.Controllers
 
     }
 }
+

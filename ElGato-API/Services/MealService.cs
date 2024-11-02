@@ -24,7 +24,7 @@ namespace ElGato_API.Services
             _contextFactory = contextFactory;
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -43,7 +43,14 @@ namespace ElGato_API.Services
                     int skip = 0;
                     if (totalMatchingDocs > qty)
                     {
-                        skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                        if (qty == 5)
+                        {
+                            skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                        }
+                        else
+                        {
+                            skip = ((pageNumber ?? 1) - 1) * (qty ?? 50);
+                        }
                     }
 
                     var meals = await _mealsCollection.Find(filter)
@@ -64,7 +71,14 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
                         Kcal = meal.MealsMakro.Kcal,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings??0,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -82,7 +96,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByHighMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByHighMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -110,7 +124,14 @@ namespace ElGato_API.Services
                 int skip = 0;
                 if (totalMatchingDocs > qty)
                 {
-                    skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                    if (qty == 5)
+                    {
+                        skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                    }
+                    else
+                    {
+                        skip = ((pageNumber ?? 1) - 1) * (qty ?? 50);
+                    }
                 }
 
                 var meals = await _mealsCollection.Find(filter)
@@ -132,6 +153,13 @@ namespace ElGato_API.Services
                         StringId = meal.Id.ToString(),
                         Name = meal.Name,
                         Time = meal.Time,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         Img = meal.Img,
                         Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
@@ -151,7 +179,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByLowMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByLowMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -179,7 +207,14 @@ namespace ElGato_API.Services
                 int skip = 0;
                 if (totalMatchingDocs > qty)
                 {
-                    skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                    if (qty == 5)
+                    {
+                        skip = random.Next(0, (int)totalMatchingDocs - qty.Value);
+                    }
+                    else
+                    {
+                        skip = ((pageNumber??1) - 1) * (qty ?? 50);
+                    }
                 }
 
                 var meals = await _mealsCollection.Find(filter)
@@ -202,6 +237,13 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
@@ -220,15 +262,20 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetMostLiked(List<string> LikedMeals, List<string> SavedMeals, int? qty = 5)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetMostLiked(List<string> LikedMeals, List<string> SavedMeals, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
             try
             {
+                int pageSize = qty ?? 5;
+                int page = pageNumber ?? 1;
+                int skipCount = (page - 1) * pageSize;
+
                 var meals = await _mealsCollection.Find(Builders<MealsDocument>.Filter.Empty)
                                                   .Sort(Builders<MealsDocument>.Sort.Descending(meal => meal.LikedCounter))
                                                   .Limit(qty.Value)
+                                                  .Skip(skipCount)
                                                   .ToListAsync();
 
                 var userIds = meals.Select(meal => meal.UserId).Distinct().ToList();
@@ -247,6 +294,13 @@ namespace ElGato_API.Services
                         Time = meal.Time,
                         Img = meal.Img,
                         Kcal = meal.MealsMakro.Kcal,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -264,14 +318,17 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetRandom(List<string> LikedMeals,List<string> SavedMeals,int? qty = 5)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetRandom(List<string> LikedMeals,List<string> SavedMeals,int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
             try
             {
+                int skip = ((pageNumber??1) - 1) * (qty??50);
+
                 var meals = await _mealsCollection.Aggregate()
                                                   .Sample(qty.Value)
+                                                  .Skip(skip)
                                                   .ToListAsync();
 
                 var userIds = meals.Select(meal => meal.UserId).Distinct().ToList();
@@ -290,6 +347,13 @@ namespace ElGato_API.Services
                         Time = meal.Time,
                         Img = meal.Img,
                         Kcal = meal.MealsMakro.Kcal,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
@@ -545,6 +609,13 @@ namespace ElGato_API.Services
                     Name = meal.Name,
                     Time = meal.Time,
                     Img = meal.Img,
+                    Desc = meal.Description,
+                    Ingredients = meal.Ingridients,
+                    Steps = meal.Steps,
+                    Protein = meal.MealsMakro.Protein,
+                    Fats = meal.MealsMakro.Fats,
+                    Carbs = meal.MealsMakro.Carbs,
+                    Servings = meal.MealsMakro.Servings ?? 0,
                     Kcal = meal.MealsMakro.Kcal,
                     SavedCounter = meal.SavedCounter,
                     LikedCounter = meal.LikedCounter,
@@ -602,6 +673,13 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
@@ -658,6 +736,13 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients,
+                        Steps = meal.Steps,
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
                         Kcal = meal.MealsMakro.Kcal,
                         SavedCounter = meal.SavedCounter,
                         LikedCounter = meal.LikedCounter,
@@ -676,39 +761,9 @@ namespace ElGato_API.Services
             }
         }
 
-
         private bool CheckIfLiked(List<string> liked, string mealId)
         {
             return liked != null && liked.Contains(mealId);
-        }
-
-        private int ConvertTimeStringToMinutes(string timeString)
-        {
-            int totalMinutes = 0;
-            string[] timeParts = timeString.ToLower().Split(' ');
-
-            for (int i = 0; i < timeParts.Length; i++)
-            {
-                if (timeParts[i].Contains("day"))
-                {
-                    if (int.TryParse(timeParts[i - 1], out int days))
-                        totalMinutes += days * 24 * 60;
-                }
-
-                if (timeParts[i].Contains("hour") || timeParts[i].Contains("hrs") || timeParts[i].Contains("hr"))
-                {
-                    if (int.TryParse(timeParts[i - 1], out int hours))
-                        totalMinutes += hours * 60;
-                }
-
-                if (timeParts[i].Contains("min"))
-                {
-                    if (int.TryParse(timeParts[i - 1], out int minutes))
-                        totalMinutes += minutes;
-                }
-            }
-
-            return totalMinutes;
         }
 
         public class UserData
