@@ -26,6 +26,20 @@ namespace ElGato_API.Data
              .WithOne(u => u.AppUser)
              .HasForeignKey<CalorieInformation>(ui => ui.UserId);
 
+            modelBuilder.Entity<AppUser>()
+                .HasMany(a => a.Achievments)
+                .WithMany(a => a.Users)
+                .UsingEntity(j => j.ToTable("UserAchievements"));
+
+            modelBuilder.Entity<AchievmentCounters>()
+                .HasOne(ac => ac.User)
+                .WithMany(u => u.AchivmentCounter)
+                .HasForeignKey(ac => ac.UserId);
+
+            modelBuilder.Entity<AchievmentCounters>()
+                .HasOne(ac => ac.Achievment)
+                .WithMany()
+                .HasForeignKey(ac => ac.AchievmentId);
 
             base.OnModelCreating(modelBuilder);
         }
@@ -36,6 +50,8 @@ namespace ElGato_API.Data
         public DbSet<ReportedIngredients> ReportedIngredients { get; set; }
         public DbSet<AddProductRequest> AddProductRequest { get; set; }
         public DbSet<ReportedMeals> ReportedMeals { get; set; }
+        public DbSet<Achievment> Achievment { get; set; }
+        public DbSet<AchievmentCounters> AchievmentCounters { get; set; }
 
     }
 }
