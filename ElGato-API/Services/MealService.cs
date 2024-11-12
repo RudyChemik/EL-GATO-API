@@ -3,11 +3,13 @@ using ElGato_API.Interfaces;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.VM.Meal;
+using ElGato_API.VMO.Achievments;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -16,11 +18,13 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<MealsDocument> _mealsCollection;
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMongoCollection<MealLikesDocument> _mealLikesCollection;
+        private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
 
         public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory)
         {
             _mealsCollection = database.GetCollection<MealsDocument>("MealsDoc");
             _mealLikesCollection = database.GetCollection<MealLikesDocument>("MealsLikeDoc");
+            _ownMealCollection = database.GetCollection<OwnMealsDocument>("OwnMealsDoc");
             _contextFactory = contextFactory;
         }
 
@@ -80,6 +84,7 @@ namespace ElGato_API.Services
                         Carbs = meal.MealsMakro.Carbs,
                         Servings = meal.MealsMakro.Servings??0,
                         SavedCounter = meal.SavedCounter,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         LikedCounter = meal.LikedCounter,
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
@@ -156,6 +161,7 @@ namespace ElGato_API.Services
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
                         Steps = meal.Steps,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         Protein = meal.MealsMakro.Protein,
                         Fats = meal.MealsMakro.Fats,
                         Carbs = meal.MealsMakro.Carbs,
@@ -240,6 +246,7 @@ namespace ElGato_API.Services
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
                         Steps = meal.Steps,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         Protein = meal.MealsMakro.Protein,
                         Fats = meal.MealsMakro.Fats,
                         Carbs = meal.MealsMakro.Carbs,
@@ -297,6 +304,7 @@ namespace ElGato_API.Services
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
                         Steps = meal.Steps,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         Protein = meal.MealsMakro.Protein,
                         Fats = meal.MealsMakro.Fats,
                         Carbs = meal.MealsMakro.Carbs,
@@ -346,6 +354,7 @@ namespace ElGato_API.Services
                         Name = meal.Name,
                         Time = meal.Time,
                         Img = meal.Img,
+                        Difficulty = meal.Difficulty??"Easy",
                         Kcal = meal.MealsMakro.Kcal,
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
@@ -612,6 +621,7 @@ namespace ElGato_API.Services
                     Desc = meal.Description,
                     Ingredients = meal.Ingridients,
                     Steps = meal.Steps,
+                    Difficulty = meal.Difficulty ?? "Easy",
                     Protein = meal.MealsMakro.Protein,
                     Fats = meal.MealsMakro.Fats,
                     Carbs = meal.MealsMakro.Carbs,
@@ -676,6 +686,7 @@ namespace ElGato_API.Services
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
                         Steps = meal.Steps,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         Protein = meal.MealsMakro.Protein,
                         Fats = meal.MealsMakro.Fats,
                         Carbs = meal.MealsMakro.Carbs,
@@ -739,6 +750,7 @@ namespace ElGato_API.Services
                         Desc = meal.Description,
                         Ingredients = meal.Ingridients,
                         Steps = meal.Steps,
+                        Difficulty = meal.Difficulty ?? "Easy",
                         Protein = meal.MealsMakro.Protein,
                         Fats = meal.MealsMakro.Fats,
                         Carbs = meal.MealsMakro.Carbs,
@@ -761,9 +773,138 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, AchievmentResponse? ach)> ProcessAndPublishMeal(string userId, PublishMealVM model)
+        {
+            try
+            {
+                string imageLink = $"/meal-images/deafult-meal-img.jpg"; //def image
+                List<string> categories = model.Tags?.Where(tag => new[] { "Side Dish", "Main Dish", "Breakfast" }.Contains(tag)).ToList() ?? new List<string>();
+                
+                if (model.Image != null)
+                {
+                    Random rnd = new Random();
+                    string extension = Path.GetExtension(model.Image.FileName);
+                    extension = string.IsNullOrEmpty(extension) ? "jpg" : extension.TrimStart('.');
+                    string newImageName = $"{Guid.NewGuid()}{rnd.Next(1, 1000000)}.{extension}";
+
+                    string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/MealImages");
+
+                    Directory.CreateDirectory(folderPath);
+
+                    string fullPath = Path.Combine(folderPath, newImageName);
+
+                    using (var fileStream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await model.Image.CopyToAsync(fileStream);
+                    }
+
+                    imageLink = $"/meal-images/{newImageName}";
+                }
+
+                //TODO
+                CategoryExtraction();
+
+                MealsDocument doc = new MealsDocument()
+                {
+                    Name = model.Name,
+                    Description = model.Desc??"",
+                    TimeMinutes = ConvertUserTimeToInt(model.Time??"30"),
+                    Time = string.IsNullOrWhiteSpace(model.Time) ? "30 minutes" : model.Time + " minutes",
+                    Steps = model.Steps,
+                    Ingridients = model.Ingridients,
+                    Img = imageLink,
+                    Tags = model.Tags ?? new List<string>(),
+                    Categories = categories,
+                    MealsMakro = model.Makro,
+                    Difficulty = SetMealDifficulty(ConvertUserTimeToInt(model.Time ?? "30"), model.Ingridients.Count(), model.Steps.Count()),
+                };
+                await _mealsCollection.InsertOneAsync(doc);
+                var createdMealId = doc.Id;
+
+                var userRecord = await _ownMealCollection.Find(r => r.UserId == userId).FirstOrDefaultAsync();
+                if (userRecord == null)
+                {
+                    OwnMealsDocument ownMealsDocument = new OwnMealsDocument()
+                    {
+                        UserId = userId,
+                        OwnMealsId = new List<string>{ createdMealId.ToString() },
+                        SavedIngMeals = new List<MealPlan>()
+                    };
+                    await _ownMealCollection.InsertOneAsync(ownMealsDocument);
+                }
+                else
+                {
+                    if (!userRecord.OwnMealsId.Contains(createdMealId.ToString()))
+                    {
+                        userRecord.OwnMealsId.Add(createdMealId.ToString());
+                        var update = Builders<OwnMealsDocument>.Update.Set(r => r.OwnMealsId, userRecord.OwnMealsId);
+                        await _ownMealCollection.UpdateOneAsync(r => r.UserId == userId, update);
+                    }
+                }
+                
+                //TODO
+                //CHECK FOR ACHIEVMENT THRESHOLD
+                //Return if exceeded.
+
+                return (new BasicErrorResponse() { Success = true }, null);
+
+            }
+            catch (Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message }, null);
+            }
+        }
+
         private bool CheckIfLiked(List<string> liked, string mealId)
         {
             return liked != null && liked.Contains(mealId);
+        }
+
+        private int ConvertUserTimeToInt(string inputString)
+        {
+            try
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(inputString, @"^\d+");
+
+                if (match.Success)
+                {
+                    return int.Parse(match.Value);
+                }
+                else
+                {
+                    return 30;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Couldn't handle parsing user time brackets.", ex);
+            }
+        }
+
+        private string SetMealDifficulty(int time, int ingCounter, int stepCounter)
+        {
+            double counter = 0;
+            string res = "Easy";
+
+            if (time > 120) counter += 0.6;
+            if (ingCounter > 8) counter += 0.1;
+            if (stepCounter > 10) counter += 0.3;
+
+            if (counter >= 1)
+            {
+                res = "Hard";
+            }
+            else if (counter >= 0.6)
+            {
+                res = "Medium";
+            }
+
+            return res;
+        }
+
+        private void CategoryExtraction()
+        {
+
         }
 
         public class UserData

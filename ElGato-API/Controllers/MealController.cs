@@ -278,6 +278,28 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> PublishMeal([FromForm]PublishMealVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+                if (!ModelState.IsValid) { return StatusCode(400, "Invalid model state. Check VM MODEL"); }
+
+                var res = await _mealService.ProcessAndPublishMeal(userId, model);
+                if (!res.error.Success) { return StatusCode(400, $"Error occured: {res.error.ErrorMessage}"); }
+
+                if (res.ach != null) { return Ok(res.ach); }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }
 

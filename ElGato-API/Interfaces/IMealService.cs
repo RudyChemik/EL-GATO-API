@@ -1,5 +1,7 @@
-﻿using ElGato_API.ModelsMongo.Meal;
+﻿using ElGato_API.Models.User;
+using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.VM.Meal;
+using ElGato_API.VMO.Achievments;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 
@@ -21,5 +23,7 @@ namespace ElGato_API.Interfaces
         Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> GetUserSavedMeals(string userId);
 
         Task<(BasicErrorResponse error, List<SimpleMealVMO> res)> Search(string userId, SearchMealVM model);
+
+        Task<(BasicErrorResponse error, AchievmentResponse? ach)> ProcessAndPublishMeal(string userId, PublishMealVM model);
     }
 }

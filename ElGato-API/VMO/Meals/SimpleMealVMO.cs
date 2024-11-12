@@ -13,6 +13,7 @@ namespace ElGato_API.VMO.Meals
         public double Servings { get; set; } = 0;
         public string Time { get; set; }
         public string Img { get; set; }
+        public string Difficulty { get; set; } = "Easy";
         public double Kcal { get; set; }
         public double Protein { get; set; }
         public double Fats { get; set; }
