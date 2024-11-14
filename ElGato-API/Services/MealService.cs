@@ -7,6 +7,7 @@ using ElGato_API.VMO.Achievments;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -19,13 +20,15 @@ namespace ElGato_API.Services
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMongoCollection<MealLikesDocument> _mealLikesCollection;
         private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
+        private readonly IAchievmentService _achievmentService;
 
-        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory)
+        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory, IAchievmentService achievmentService)
         {
             _mealsCollection = database.GetCollection<MealsDocument>("MealsDoc");
             _mealLikesCollection = database.GetCollection<MealLikesDocument>("MealsLikeDoc");
             _ownMealCollection = database.GetCollection<OwnMealsDocument>("OwnMealsDoc");
             _contextFactory = contextFactory;
+            _achievmentService = achievmentService;
         }
 
         public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
@@ -841,11 +844,18 @@ namespace ElGato_API.Services
                         await _ownMealCollection.UpdateOneAsync(r => r.UserId == userId, update);
                     }
                 }
-                
-                //TODO
-                //CHECK FOR ACHIEVMENT THRESHOLD
-                //Return if exceeded.
 
+                var currentAchievmentCounter = await _achievmentService.GetCurrentAchivmentIdFromFamily("COOK", userId);
+                if (!currentAchievmentCounter.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong while trying to get current achievment. {currentAchievmentCounter.error.ErrorMessage}" }, null); }
+
+                if (!string.IsNullOrEmpty(currentAchievmentCounter.achievmentName))
+                {
+                    var achievmentRes = await _achievmentService.IncrementAchievmentProgress(currentAchievmentCounter.achievmentName, userId);
+                    if (!achievmentRes.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = achievmentRes.error.ErrorMessage }, null); }
+
+                    return (new BasicErrorResponse() { Success = true }, achievmentRes.ach ?? null);
+                }
+             
                 return (new BasicErrorResponse() { Success = true }, null);
 
             }

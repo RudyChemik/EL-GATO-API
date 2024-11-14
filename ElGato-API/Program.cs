@@ -91,6 +91,7 @@ builder.Services.AddScoped<IMongoInits, MongoInits>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRequestService, UserRequestService>();
 builder.Services.AddScoped<IMealService, MealService>();
+builder.Services.AddScoped<IAchievmentService, AchievmentService>();
 
 builder.Services.AddScoped<IScrapService, ScrapService>();
 
@@ -152,6 +153,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/Achievments")),
+    RequestPath = "/achievments"
+});
 
 app.UseStaticFiles(new StaticFileOptions
 {

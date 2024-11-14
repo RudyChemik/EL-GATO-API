@@ -6,6 +6,8 @@
 # Ignore MealImages folder
 Assets/Images/MealImages/
 
+Assets/Images/Achievments
+
 # Ignore PFP's
 Assets/Images/UserPfp
 
