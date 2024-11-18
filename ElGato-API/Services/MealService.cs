@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -810,6 +809,7 @@ namespace ElGato_API.Services
                 MealsDocument doc = new MealsDocument()
                 {
                     Name = model.Name,
+                    UserId = userId,
                     Description = model.Desc??"",
                     TimeMinutes = ConvertUserTimeToInt(model.Time??"30"),
                     Time = string.IsNullOrWhiteSpace(model.Time) ? "30 minutes" : model.Time + " minutes",
@@ -915,6 +915,61 @@ namespace ElGato_API.Services
         private void CategoryExtraction()
         {
 
+        }
+
+        public async Task<(BasicErrorResponse error, List<SimpleMealVMO>? res)> GetOwnMeals(string userId, List<string> LikedMeals, List<string> SavedMeals)
+        {
+            try
+            {
+                var ownMealDosc = await _ownMealCollection.Find(r => r.UserId == userId).FirstOrDefaultAsync();
+                if(ownMealDosc == null)
+                {
+                    return (new BasicErrorResponse() { Success = true }, null);
+                }
+
+                var ownMeals = await _mealsCollection.Find(a => ownMealDosc.OwnMealsId.Contains(a.Id.ToString())).ToListAsync();
+                var userIds = ownMeals.Select(meal => meal.UserId).Distinct().ToList();
+
+
+                using (var _context = _contextFactory.CreateDbContext())
+                {
+                    var users = await _context.AppUser
+                        .Where(user => userIds.Contains(user.Id))
+                        .ToDictionaryAsync(user => user.Id ?? "unknown", user => new { user.Name, user.Pfp });
+
+
+                    var res = ownMeals.Select(meal => new SimpleMealVMO
+                    {
+                        Id = meal.Id,
+                        StringId = meal.Id.ToString(),
+                        Name = meal.Name??"xdddd",
+                        Time = meal.Time,
+                        Img = meal.Img,
+                        Kcal = meal.MealsMakro.Kcal,
+                        Desc = meal.Description,
+                        Ingredients = meal.Ingridients ?? new List<string>(),
+                        Steps = meal.Steps ?? new List<string>(),
+                        Difficulty = meal.Difficulty ?? "Easy",
+                        Protein = meal.MealsMakro.Protein,
+                        Fats = meal.MealsMakro.Fats,
+                        Carbs = meal.MealsMakro.Carbs,
+                        Servings = meal.MealsMakro.Servings ?? 0,
+                        SavedCounter = meal.SavedCounter,
+                        LikedCounter = meal.LikedCounter,
+                        CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
+                        CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
+                        Liked = LikedMeals.Contains(meal.Id.ToString()),
+                        Saved = SavedMeals.Contains(meal.Id.ToString())
+                    }).ToList();
+
+                    return (new BasicErrorResponse() { Success = true }, res);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message }, null);
+            }
         }
 
         public class UserData

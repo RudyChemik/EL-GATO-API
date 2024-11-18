@@ -5,6 +5,7 @@ using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using MongoDB.Bson;
 
 namespace ElGato_API.Controllers
@@ -295,6 +296,35 @@ namespace ElGato_API.Controllers
                 return Ok();
             }
             catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetOwnRecipes()
+        {
+            try
+            {
+                List<string> UserLikes = new List<string>();
+                List<string> UserSaves = new List<string>();
+
+                string userId = _jwtService.GetUserIdClaim();
+                var userLikesDoc = await _mealService.GetUserMealLikeDoc(userId);
+
+                if (userLikesDoc.error.Success)
+                {
+                    UserLikes = userLikesDoc.res.LikedMeals;
+                    UserSaves = userLikesDoc.res.SavedMeals;
+                }
+
+                var res = await _mealService.GetOwnMeals(userId, UserLikes, UserSaves);
+                if (!res.error.Success) { return StatusCode(400, $"Error occured: {res.error.ErrorMessage}"); }
+
+                return Ok(res.res);
+            }
+            catch(Exception ex)
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
