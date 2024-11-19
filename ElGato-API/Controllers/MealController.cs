@@ -41,15 +41,15 @@ namespace ElGato_API.Controllers
 
                 var tasks = new[]
                 {
-                    _mealService.GetByMainCategory(UserLikes, UserSaves, "Breakfast", 5),
-                    _mealService.GetByMainCategory(UserLikes, UserSaves, "Main", 5),
-                    _mealService.GetByMainCategory(UserLikes, UserSaves, "Side", 5),
-                    _mealService.GetByHighMakro(UserLikes, UserSaves, "protein", 5),
-                    _mealService.GetByHighMakro(UserLikes, UserSaves, "carbs", 5),
-                    _mealService.GetByLowMakro(UserLikes, UserSaves, "carbs", 5),
-                    _mealService.GetByLowMakro(UserLikes, UserSaves, "fats", 5),
-                    _mealService.GetMostLiked(UserLikes, UserSaves, 5),
-                    _mealService.GetRandom(UserLikes, UserSaves, 5)
+                    _mealService.GetByMainCategory(userId, UserLikes, UserSaves, "Breakfast", 5),
+                    _mealService.GetByMainCategory(userId,UserLikes, UserSaves, "Main", 5),
+                    _mealService.GetByMainCategory(userId,UserLikes, UserSaves, "Side", 5),
+                    _mealService.GetByHighMakro(userId,UserLikes, UserSaves, "protein", 5),
+                    _mealService.GetByHighMakro(userId,UserLikes, UserSaves, "carbs", 5),
+                    _mealService.GetByLowMakro(userId,UserLikes, UserSaves, "carbs", 5),
+                    _mealService.GetByLowMakro(userId,UserLikes, UserSaves, "fats", 5),
+                    _mealService.GetMostLiked(userId,UserLikes, UserSaves, 5),
+                    _mealService.GetRandom(userId,UserLikes, UserSaves, 5)
                 };
 
                 var results = await Task.WhenAll(tasks);
@@ -105,62 +105,62 @@ namespace ElGato_API.Controllers
                 switch (model.Type)
                 {
                     case "Most Liked":
-                        var likedMealRes = await _mealService.GetMostLiked(UserLikes, UserSaves, model.pageSize, model.page);
+                        var likedMealRes = await _mealService.GetMostLiked(userId, UserLikes, UserSaves, model.pageSize, model.page);
                         if (!likedMealRes.error.Success)
                             return StatusCode(400, $"Error while fetching liked data {likedMealRes.error.ErrorMessage}");
                         mealList.AddRange(likedMealRes.res);
                         break;
                     case "All":
-                        var rndMealRes = await _mealService.GetRandom(UserLikes, UserSaves, model.pageSize, model.page);
+                        var rndMealRes = await _mealService.GetRandom(userId, UserLikes, UserSaves, model.pageSize, model.page);
                         if (!rndMealRes.error.Success)
                             return StatusCode(400, $"Error while fetching rnd data {rndMealRes.error.ErrorMessage}");
                         mealList.AddRange(rndMealRes.res);
                         break;
 
                     case "Breakfast":
-                        var breakfastRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Breakfast", model.pageSize, model.page);
+                        var breakfastRes = await _mealService.GetByMainCategory(userId, UserLikes, UserSaves, "Breakfast", model.pageSize, model.page);
                         if (!breakfastRes.error.Success)
                             return StatusCode(400, $"Error while fetching breakfast data {breakfastRes.error.ErrorMessage}");
                         mealList.AddRange(breakfastRes.res);
                         break;
 
                     case "Side Dish":
-                        var sideDishRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Side", model.pageSize, model.page);
+                        var sideDishRes = await _mealService.GetByMainCategory(userId, UserLikes, UserSaves, "Side", model.pageSize, model.page);
                         if (!sideDishRes.error.Success)
                             return StatusCode(400, $"Error while fetching side dish data {sideDishRes.error.ErrorMessage}");
                         mealList.AddRange(sideDishRes.res);
                         break;
 
                     case "Main Dish":
-                        var mainDishRes = await _mealService.GetByMainCategory(UserLikes, UserSaves, "Main", model.pageSize, model.page);
+                        var mainDishRes = await _mealService.GetByMainCategory(userId, UserLikes, UserSaves, "Main", model.pageSize, model.page);
                         if (!mainDishRes.error.Success)
                             return StatusCode(400, $"Error while fetching main dish data {mainDishRes.error.ErrorMessage}");
                         mealList.AddRange(mainDishRes.res);
                         break;
 
                     case "High Protein":
-                        var highProteinRes = await _mealService.GetByHighMakro(UserLikes, UserSaves, "protein", model.pageSize, model.page);
+                        var highProteinRes = await _mealService.GetByHighMakro(userId, UserLikes, UserSaves, "protein", model.pageSize, model.page);
                         if (!highProteinRes.error.Success)
                             return StatusCode(400, $"Error while fetching high protein data {highProteinRes.error.ErrorMessage}");
                         mealList.AddRange(highProteinRes.res);
                         break;
 
                     case "Low Carbs":
-                        var lowCarbsRes = await _mealService.GetByLowMakro(UserLikes, UserSaves, "carbs", model.pageSize, model.page);
+                        var lowCarbsRes = await _mealService.GetByLowMakro(userId, UserLikes, UserSaves, "carbs", model.pageSize, model.page);
                         if (!lowCarbsRes.error.Success)
                             return StatusCode(400, $"Error while fetching low carbs data {lowCarbsRes.error.ErrorMessage}");
                         mealList.AddRange(lowCarbsRes.res);
                         break;
 
                     case "High Carbs":
-                        var highCarbsRes = await _mealService.GetByHighMakro(UserLikes, UserSaves, "carbs", model.pageSize, model.page);
+                        var highCarbsRes = await _mealService.GetByHighMakro(userId, UserLikes, UserSaves, "carbs", model.pageSize, model.page);
                         if (!highCarbsRes.error.Success)
                             return StatusCode(400, $"Error while fetching high carbs data {highCarbsRes.error.ErrorMessage}");
                         mealList.AddRange(highCarbsRes.res);
                         break;
 
                     case "Low Fat":
-                        var lowFatRes = await _mealService.GetByLowMakro(UserLikes, UserSaves, "fats", model.pageSize, model.page);
+                        var lowFatRes = await _mealService.GetByLowMakro(userId, UserLikes, UserSaves, "fats", model.pageSize, model.page);
                         if (!lowFatRes.error.Success)
                             return StatusCode(400, $"Error while fetching low fat data {lowFatRes.error.ErrorMessage}");
                         mealList.AddRange(lowFatRes.res);

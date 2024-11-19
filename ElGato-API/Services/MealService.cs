@@ -30,7 +30,7 @@ namespace ElGato_API.Services
             _achievmentService = achievmentService;
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(string userId, List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -91,7 +91,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = CheckIfLiked(LikedMeals, meal.Id.ToString()),
-                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),                        
+                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -103,7 +104,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByHighMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByHighMakro(string userId, List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -175,7 +176,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = CheckIfLiked(LikedMeals, meal.Id.ToString()), 
-                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()) 
+                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -187,7 +189,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByLowMakro(List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByLowMakro(string userId, List<string> LikedMeals, List<string> SavedMeals, string makroComponent, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -259,7 +261,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = CheckIfLiked(LikedMeals, meal.Id.ToString()), 
-                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()) 
+                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -271,7 +274,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetMostLiked(List<string> LikedMeals, List<string> SavedMeals, int? qty = 5, int? pageNumber = 1)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetMostLiked(string userId, List<string> LikedMeals, List<string> SavedMeals, int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -316,7 +319,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = CheckIfLiked(LikedMeals, meal.Id.ToString()),
-                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString())
+                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -328,7 +332,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetRandom(List<string> LikedMeals,List<string> SavedMeals,int? qty = 5, int? pageNumber = 1)
+        public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetRandom(string userId, List<string> LikedMeals,List<string> SavedMeals,int? qty = 5, int? pageNumber = 1)
         {
             List<SimpleMealVMO> res = new List<SimpleMealVMO>();
 
@@ -370,7 +374,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = CheckIfLiked(LikedMeals, meal.Id.ToString()),
-                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()) 
+                        Saved = CheckIfLiked(SavedMeals, meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -634,7 +639,8 @@ namespace ElGato_API.Services
                     CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                     CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                     Liked = likedMeals.Contains(meal.Id.ToString()),
-                    Saved = savedMeals.Contains(meal.Id.ToString())
+                    Saved = savedMeals.Contains(meal.Id.ToString()),
+                    Own = meal.UserId == userId
                 }).ToList();
 
                 return (new BasicErrorResponse() { Success = true }, res);
@@ -699,7 +705,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = true, 
-                        Saved = doc.SavedMeals.Contains(meal.Id.ToString()) 
+                        Saved = doc.SavedMeals.Contains(meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -763,7 +770,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = doc.LikedMeals.Contains(meal.Id.ToString()), 
-                        Saved = true 
+                        Saved = true ,
+                        Own = meal.UserId == userId
                     }).ToList();
                 }
 
@@ -959,7 +967,8 @@ namespace ElGato_API.Services
                         CreatorName = users.ContainsKey(meal.UserId) ? users[meal.UserId].Name : "Unknown",
                         CreatorPfp = users.ContainsKey(meal.UserId) ? users[meal.UserId].Pfp : "/pfp-images/e2f56642-a493-4c6d-924b-d3072714646a.png",
                         Liked = LikedMeals.Contains(meal.Id.ToString()),
-                        Saved = SavedMeals.Contains(meal.Id.ToString())
+                        Saved = SavedMeals.Contains(meal.Id.ToString()),
+                        Own = meal.UserId == userId
                     }).ToList();
 
                     return (new BasicErrorResponse() { Success = true }, res);

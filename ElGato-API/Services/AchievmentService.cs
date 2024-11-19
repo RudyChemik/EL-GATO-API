@@ -108,6 +108,7 @@ namespace ElGato_API.Services
                         return (new BasicErrorResponse() { Success = true, }, achRes);
                     }
 
+                    await _context.SaveChangesAsync();
                     return (new BasicErrorResponse() { Success = true, }, null);
                 }
                 else

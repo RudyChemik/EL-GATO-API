@@ -24,5 +24,6 @@ namespace ElGato_API.VMO.Meals
         public string? CreatorPfp { get; set; }
         public bool Liked { get; set; } = false;
         public bool Saved { get; set; } = false;
+        public bool Own {  get; set; } = false;
     }
 }
