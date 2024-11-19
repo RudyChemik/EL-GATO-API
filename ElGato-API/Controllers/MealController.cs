@@ -330,6 +330,27 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> DeleteMeal(string mealId)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                ObjectId mealIdObj = ObjectId.Parse(mealId);
+
+                var res = await _mealService.DeleteMeal(userId, mealIdObj);
+                if (!res.Success) { return StatusCode(400, $"Error occured: {res.ErrorMessage}"); }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }
 

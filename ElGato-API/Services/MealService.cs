@@ -981,6 +981,38 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> DeleteMeal(string userId, ObjectId mealId)
+        {
+            try
+            {
+                var mealDoc = await _mealsCollection.Find(r => r.Id == mealId).FirstOrDefaultAsync();
+                if (mealDoc == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id" };
+                }
+
+                if (mealDoc.UserId != userId) 
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Permission denied. Given meal is not created by the user." };
+                }
+
+                var deleteResult = await _mealsCollection.DeleteOneAsync(r => r.Id == mealId);
+
+                if (deleteResult.DeletedCount > 0)
+                {
+                    return new BasicErrorResponse() { Success = true };
+                }
+                else
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to delete the meal" };
+                }
+            }
+            catch (Exception ex) 
+            { 
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
         public class UserData
         {
             public string Name { get; set; }

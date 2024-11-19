@@ -4,6 +4,7 @@ using ElGato_API.VM.Meal;
 using ElGato_API.VMO.Achievments;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
+using MongoDB.Bson;
 
 namespace ElGato_API.Interfaces
 {
@@ -27,5 +28,7 @@ namespace ElGato_API.Interfaces
         Task<(BasicErrorResponse error, AchievmentResponse? ach)> ProcessAndPublishMeal(string userId, PublishMealVM model);
 
         Task<(BasicErrorResponse error, List<SimpleMealVMO>? res)> GetOwnMeals(string userId, List<string> LikedMeals, List<string> SavedMeals);
+
+        Task<BasicErrorResponse> DeleteMeal(string userId, ObjectId mealId);
     }
 }
