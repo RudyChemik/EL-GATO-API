@@ -1,6 +1,7 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
 using ElGato_API.VM.Diet;
+using ElGato_API.VMO.ErrorResponse;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -126,6 +127,37 @@ namespace ElGato_API.Controllers
 
             }
             catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal error occurred. {ex.Message}");
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> AddMealToSavedMeals(SaveIngridientMealVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.AddMealToSavedMeals(userId, model);
+                if (!res.Success)
+                {
+                    return StatusCode(400, new
+                    {
+                        message = res.ErrorMessage,
+                        errorCode = res.ErrorCode,
+                    });
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
             {
                 return StatusCode(500, $"An internal error occurred. {ex.Message}");
             }

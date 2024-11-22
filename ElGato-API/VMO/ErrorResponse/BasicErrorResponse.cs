@@ -4,5 +4,6 @@
     {
         public bool Success { get; set; }
         public string? ErrorMessage { get; set; }
+        public ErrorCodes ErrorCode { get; set; } = ErrorCodes.None;
     }
 }

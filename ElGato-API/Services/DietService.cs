@@ -2,6 +2,7 @@
 using ElGato_API.Models.User;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Diet.History;
+using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.VM.Diet;
 using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
@@ -20,12 +21,14 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<DietDocument> _dietCollection;
         private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
         private readonly IMongoCollection<ProductDocument> _productCollection;
+        private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
 
         public DietService(IMongoDatabase database) 
         {
             _dietCollection = database.GetCollection<DietDocument>("DailyDiet");
             _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
             _productCollection = database.GetCollection<ProductDocument>("products");
+            _ownMealCollection = database.GetCollection<OwnMealsDocument>("OwnMealsDoc");
         }
 
         public async Task<BasicErrorResponse> AddNewMeal(string userId, string mealName, DateTime date)
@@ -269,6 +272,44 @@ namespace ElGato_API.Services
             catch (Exception ex)
             {
                 return (null, new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message });
+            }
+        }
+
+        public async Task<BasicErrorResponse> AddMealToSavedMeals(string userId, SaveIngridientMealVM model)
+        {
+            try
+            {
+                Random rnd = new Random();
+
+                var userOwnMealDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userOwnMealDoc == null)
+                {
+                    OwnMealsDocument ownMealsDocument = new OwnMealsDocument()
+                    {
+                        UserId = userId,
+                        OwnMealsId = new List<string>(),
+                        SavedIngMeals = new List<MealPlan>() { new MealPlan() { Name = model.Name, Ingridient = model.Ingridients, PublicId = rnd.Next(1,99999)} }
+                    };
+                    await _ownMealCollection.InsertOneAsync(ownMealsDocument);
+                    return new BasicErrorResponse() { Success = true };
+                }
+
+                if(userOwnMealDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == model.Name) != null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Already saved meal with given name.", ErrorCode = ErrorCodes.AlreadyExists };
+                }
+
+                userOwnMealDoc.SavedIngMeals.Add(new MealPlan() { Name = model.Name, Ingridient = model.Ingridients, PublicId = rnd.Next(1, 99999) });
+                await _ownMealCollection.ReplaceOneAsync(
+                    filter: a => a.UserId == userId,
+                    replacement: userOwnMealDoc
+                );
+
+                return new BasicErrorResponse() { Success = true };
+            }
+            catch (Exception ex) 
+            { 
+                return new BasicErrorResponse() { Success = false, ErrorMessage= ex.Message };
             }
         }
 
