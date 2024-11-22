@@ -6,6 +6,7 @@
         public string Id { get; set; }
         public double Prep_For { get; set; }
         public double WeightValue { get; set; }
+        public bool Servings { get; set; } = false;
         public double Proteins { get; set; }
         public double Carbs { get; set; }
         public double Fats { get; set; }

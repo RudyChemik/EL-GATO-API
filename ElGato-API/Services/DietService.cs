@@ -115,6 +115,7 @@ namespace ElGato_API.Services
                     PrepedFor = model.Ingridient.Prep_For,
                     publicId = model.Ingridient.Id,
                     Name = model.Ingridient.Name,
+                    Servings = model.Ingridient.Servings,
 
                 };
 
@@ -166,6 +167,7 @@ namespace ElGato_API.Services
                         Proteins = ingridientVMO.Proteins,
                         Fats = ingridientVMO.Fats,
                         EnergyKcal = ingridientVMO.Kcal,
+                        Servings = ingridientVMO.Servings,
                         WeightValue = ingridientVMO.WeightValue,
                         PrepedFor = ingridientVMO.Prep_For,
                         publicId = ingridientVMO.Id,

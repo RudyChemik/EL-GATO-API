@@ -7,6 +7,7 @@
         public double WeightValue { get; set; }
         public double PrepedFor { get; set; }
         public double Proteins { get; set; }
+        public bool Servings { get; set; } = false;
         public double Carbs { get; set; }
         public double Fats { get; set; }
         public double EnergyKcal { get; set; }
