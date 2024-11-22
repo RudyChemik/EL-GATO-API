@@ -1,4 +1,5 @@
-﻿using ElGato_API.VM.Diet;
+﻿using ElGato_API.ModelsMongo.Diet;
+using ElGato_API.VM.Diet;
 using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Questionary;
@@ -19,6 +20,7 @@ namespace ElGato_API.Interfaces
         Task<(List<IngridientVMO>? ingridients, BasicErrorResponse error)> GetListOfIngridientsByName(string name);
         Task<(BasicErrorResponse errorResponse, DietDocVMO model)> GetUserDoc(string userId);
         Task<(BasicErrorResponse errorResponse, DietDayVMO model)> GetUserDietDay(string userId, DateTime date);
+        Task<(BasicErrorResponse errorResponse, List<MealPlan>? model)> GetSavedMeals(string userId);
 
         //del
         Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date);

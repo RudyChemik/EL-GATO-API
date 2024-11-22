@@ -264,6 +264,27 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> GetSavedMeals()
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                var res = await _dietService.GetSavedMeals(userId);
+                if (!res.errorResponse.Success)
+                {
+                    return StatusCode(400, $"An error occured, {res.errorResponse.ErrorMessage}");
+                }
+
+                return Ok(res.model);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error occured. {ex.Message}");
+            }
+        }
 
         [HttpDelete]
         [Authorize(Policy = "user")]

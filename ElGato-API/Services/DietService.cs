@@ -440,6 +440,31 @@ namespace ElGato_API.Services
             return (errorResponse, model);
         }
 
+        public async Task<(BasicErrorResponse errorResponse, List<MealPlan>? model)> GetSavedMeals(string userId)
+        {
+            try
+            {
+                var userOwnMealsDoc = await _ownMealCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if(userOwnMealsDoc == null)
+                {
+                    OwnMealsDocument ownMealsDocument = new OwnMealsDocument()
+                    {
+                        UserId = userId,
+                        OwnMealsId = new List<string>(),
+                        SavedIngMeals = new List<MealPlan>()  
+                    };
+                    await _ownMealCollection.InsertOneAsync(ownMealsDocument);
+                    return (new BasicErrorResponse() { Success = true }, null);
+                }
+
+                return (new BasicErrorResponse() { Success = true }, userOwnMealsDoc.SavedIngMeals ?? null);
+            }
+            catch (Exception ex) 
+            {
+                return (new BasicErrorResponse { ErrorMessage = ex.Message, Success = false }, null);
+            }
+        }
+
         public async Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date)
         {
             try
@@ -825,7 +850,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-
+       
     }
 
     public class Makros
