@@ -404,12 +404,23 @@ namespace ElGato_API.Services
                     return (errorResponse, model);
                 }
 
+                var ownDocumentDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+
                 var dailyPlan = existingDocument.DailyPlans.FirstOrDefault(a => a.Date == date);
                 if (dailyPlan != null)
                 {
                     model.Date = date;
                     model.Water = dailyPlan.Water;
-                    model.Meals = dailyPlan.Meals;
+                    model.Meals = dailyPlan.Meals.Select(meal => new MealPlanVMO
+                    {
+                        Name = meal.Name,
+                        PublicId = meal.PublicId,
+                        IsSaved = ownDocumentDoc?.SavedIngMeals?.Any(savedMeal =>
+                            savedMeal.Name == meal.Name &&
+                            AreIngredientsEqual(savedMeal.Ingridient, meal.Ingridient)) ?? false,
+                        Ingridient = meal.Ingridient
+                    }).ToList();
+
                     model.CalorieCounter = new DailyCalorieCount();
 
                     foreach (var meal in model.Meals)
@@ -438,6 +449,24 @@ namespace ElGato_API.Services
             }
 
             return (errorResponse, model);
+        }
+
+        private bool AreIngredientsEqual(List<Ingridient> ingredients1, List<Ingridient> ingredients2)
+        {
+            if (ingredients1.Count != ingredients2.Count)
+                return false;
+
+            foreach (var ingr1 in ingredients1)
+            {
+                var matchingIngr = ingredients2.FirstOrDefault(ingr2 =>
+                    ingr2.Name == ingr1.Name &&
+                    ingr2.WeightValue == ingr1.WeightValue);
+
+                if (matchingIngr == null)
+                    return false;
+            }
+
+            return true;
         }
 
         public async Task<(BasicErrorResponse errorResponse, List<MealPlan>? model)> GetSavedMeals(string userId)

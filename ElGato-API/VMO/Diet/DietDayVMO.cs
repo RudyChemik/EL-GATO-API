@@ -6,7 +6,7 @@ namespace ElGato_API.VMO.Diet
     {
         public DateTime Date { get; set; }
         public int Water { get; set; }
-        public List<MealPlan> Meals { get; set; } = new List<MealPlan>();
+        public List<MealPlanVMO> Meals { get; set; } = new List<MealPlanVMO>();
         public DailyCalorieCount CalorieCounter { get; set; }
     }
 
