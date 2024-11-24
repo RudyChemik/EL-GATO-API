@@ -594,6 +594,40 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> RemoveMealFromSaved(string userId, string name)
+        {
+            try
+            {
+                var savedMealDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (savedMealDoc == null || savedMealDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User document with saved meals not found." };
+                }
+
+                var mealToRemove = savedMealDoc.SavedIngMeals.Find(a => a.Name == name);
+                if(mealToRemove == null)
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Meal not found in saved meals" };
+
+                savedMealDoc.SavedIngMeals.Remove(mealToRemove);
+
+                var updateRes = await _ownMealCollection.ReplaceOneAsync(
+                    a => a.UserId == userId,
+                    savedMealDoc
+                );
+
+                if (updateRes.ModifiedCount > 0)
+                {
+                    return new BasicErrorResponse() { Success = true };
+                }
+
+                return new BasicErrorResponse() { Success = false, ErrorMessage = "Something went wrong while removing meal." };
+            }
+            catch (Exception ex) 
+            {
+                return new BasicErrorResponse() { ErrorMessage = ex.Message, Success = false };
+            }
+        }
+
         public async Task<BasicErrorResponse> UpdateMealName(string userId, UpdateMealNameVM model)
         {
             try
@@ -879,7 +913,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-       
+        
     }
 
     public class Makros

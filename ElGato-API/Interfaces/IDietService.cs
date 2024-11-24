@@ -25,6 +25,7 @@ namespace ElGato_API.Interfaces
         //del
         Task<BasicErrorResponse> DeleteMeal(string userId, int publicId, DateTime date);
         Task<BasicErrorResponse> DeleteIngridientFromMeal(string userId, RemoveIngridientVM model);
+        Task<BasicErrorResponse> RemoveMealFromSaved(string userId, string name);
 
         //patch
         Task<BasicErrorResponse> UpdateMealName(string userId, UpdateMealNameVM model);
