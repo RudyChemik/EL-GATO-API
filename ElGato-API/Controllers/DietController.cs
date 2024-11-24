@@ -163,6 +163,32 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> AddMealFromSaved([FromBody] AddMealFromSavedVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "model state not valid");
+                }
+
+                var res = await _dietService.AddMealFromSavedMeals(userId, model);
+
+                if (!res.Success)
+                    return StatusCode(400, $"Something went wrong. {res.ErrorMessage}");
+                
+
+                return Ok();
+            }
+            catch (Exception ex) 
+            {
+                return StatusCode(500, $"An internal server error occured. {ex.Message}");
+            }
+        }
+
         [HttpGet]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> GetUserDietDoc()

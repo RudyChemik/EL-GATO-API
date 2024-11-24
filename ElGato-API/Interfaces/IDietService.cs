@@ -14,6 +14,7 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> AddIngredientsToMeals(string userId, AddIngridientsVM model);
         Task<BasicErrorResponse> AddWater(string userId, int water, DateTime date);
         Task<BasicErrorResponse> AddMealToSavedMeals(string userId, SaveIngridientMealVM model);
+        Task<BasicErrorResponse> AddMealFromSavedMeals(string userId, AddMealFromSavedVM model);
 
         //getters
         Task<(IngridientVMO? ingridient, BasicErrorResponse error)> GetIngridientByEan(string ean);

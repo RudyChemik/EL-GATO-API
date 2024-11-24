@@ -313,6 +313,75 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> AddMealFromSavedMeals(string userId, AddMealFromSavedVM model)
+        {
+            try
+            {
+                var userOwnMealDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userOwnMealDoc == null || userOwnMealDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage="No savedmeals document for given user or the doc is empty." };
+                }
+
+                var savedMealToAdd = userOwnMealDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == model.Name);
+                if (savedMealToAdd == null) { return new BasicErrorResponse() { Success = false, ErrorMessage = "User does not have any saved meal wtih given name" }; }
+
+                var dailyDietDoc = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
+                if (dailyDietDoc == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User daily diet document not found" };
+                }
+
+                var currentPlan = dailyDietDoc.DailyPlans.FirstOrDefault(dp => dp.Date.Date == model.Date);
+                int newMealPublicId = 1;
+
+                if (currentPlan != null)
+                {
+                    newMealPublicId = currentPlan.Meals.Any() ? (currentPlan.Meals.Max(m => m.PublicId) + 1) : 1;
+
+                    var newMeal = new MealPlan
+                    {
+                        Name = savedMealToAdd.Name,
+                        Ingridient = savedMealToAdd.Ingridient,
+                        PublicId = newMealPublicId
+                    };
+
+                    var filter = Builders<DietDocument>.Filter.And(
+                        Builders<DietDocument>.Filter.Eq(d => d.UserId, userId),
+                        Builders<DietDocument>.Filter.Eq("DailyPlans.Date", model.Date.Date)
+                    );
+
+                    var update = Builders<DietDocument>.Update.Push("DailyPlans.$.Meals", newMeal);
+                    await _dietCollection.UpdateOneAsync(filter, update);
+                }
+                else
+                {
+                    var newDailyPlan = new DailyDietPlan
+                    {
+                        Date = model.Date,
+                        Meals = new List<MealPlan>
+                        {
+                            new MealPlan
+                            {
+                                Name = savedMealToAdd.Name,
+                                Ingridient = savedMealToAdd.Ingridient,
+                                PublicId = newMealPublicId
+                            }
+                        }
+                    };
+
+                    var update = Builders<DietDocument>.Update.Push(d => d.DailyPlans, newDailyPlan);
+                    await _dietCollection.UpdateOneAsync(d => d.UserId == userId, update);
+                }
+
+                return new BasicErrorResponse() { Success = true };
+            }
+            catch (Exception ex) 
+            { 
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+            }
+        }
+
         public async Task<(List<IngridientVMO>? ingridients, BasicErrorResponse error)> GetListOfIngridientsByName(string name)
         {
             try
