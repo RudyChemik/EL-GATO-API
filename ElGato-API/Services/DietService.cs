@@ -7,6 +7,7 @@ using ElGato_API.VM.Diet;
 using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Questionary;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -694,6 +695,45 @@ namespace ElGato_API.Services
             catch (Exception ex) 
             {
                 return new BasicErrorResponse() { ErrorMessage = ex.Message, Success = false };
+            }
+        }
+
+        public async Task<BasicErrorResponse> DeleteMealsFromSaved(string userId, DeleteSavedMealsVM model)
+        {
+            try
+            {
+                var ownMealsDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (ownMealsDoc == null || ownMealsDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Saved meals document not found for the user" };
+                }
+
+                foreach (var mealName in model.SavedMealsNames) 
+                { 
+                    var mealToDelete = ownMealsDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == mealName);
+                    if (mealToDelete == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "Saved meal with given name not found." };
+                    }
+                    ownMealsDoc.SavedIngMeals.Remove(mealToDelete);
+                }
+
+                var removeRes = await _ownMealCollection.ReplaceOneAsync(
+                    a => a.UserId == userId,
+                    ownMealsDoc
+                );
+
+                if (!removeRes.IsAcknowledged || removeRes.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to remove meals" };
+                }
+
+                return new BasicErrorResponse() { Success = true };
+
+            }
+            catch (Exception ex) 
+            { 
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
             }
         }
 

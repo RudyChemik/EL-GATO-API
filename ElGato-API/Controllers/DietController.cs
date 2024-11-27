@@ -396,6 +396,30 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        public async Task<IActionResult> DeleteMealsFromSaved([FromBody] DeleteSavedMealsVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, "questionary model state not valid");
+                }
+
+                var res = await _dietService.DeleteMealsFromSaved(userId, model);
+                if (!res.Success) { StatusCode(400, $"an error occured: {res.ErrorMessage}"); };
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An internal server error occured. {ex.Message}");
+            }
+        }
+
         [HttpPatch]
         [Authorize(Policy = "user")]
         public async Task<IActionResult> UpdateIngridientWeightValue([FromBody] UpdateIngridientVM model) 
