@@ -31,6 +31,7 @@ namespace ElGato_API.Interfaces
         //patch
         Task<BasicErrorResponse> UpdateMealName(string userId, UpdateMealNameVM model);
         Task<BasicErrorResponse> UpdateIngridientWeightValue(string userId, UpdateIngridientVM model);
+        Task<BasicErrorResponse> UpdateSavedMealIngridientWeight(string userId, UpdateSavedMealWeightVM model);
 
         CalorieIntakeVMO CalculateCalories(QuestionaryVM questionary);
     }

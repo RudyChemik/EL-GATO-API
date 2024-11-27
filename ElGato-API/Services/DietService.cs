@@ -787,7 +787,42 @@ namespace ElGato_API.Services
         }
 
 
+        public async Task<BasicErrorResponse> UpdateSavedMealIngridientWeight(string userId, UpdateSavedMealWeightVM model)
+        {
+            try
+            {
+                var ownMealDoc = await _ownMealCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if (ownMealDoc == null || ownMealDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User saved meal document does not exist." };
+                }
 
+                var mealToUpdate = ownMealDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == model.MealName);
+                if(mealToUpdate == null) { return new BasicErrorResponse() { Success = false, ErrorMessage = "Saved meal with given meal name does not exists" }; }
+
+                var ingridientToUpdate = mealToUpdate.Ingridient.FirstOrDefault(a => a.Name == model.IngridientName && a.publicId == model.PublicId);
+                if (ingridientToUpdate == null) { return new BasicErrorResponse() { Success = false, ErrorMessage = "Ingridient for update does not exist." }; }
+
+                ingridientToUpdate.WeightValue = model.NewWeight;
+
+                var updateRes = await _ownMealCollection.ReplaceOneAsync(
+                    a => a.UserId == userId,
+                    ownMealDoc
+                );
+
+                if (!updateRes.IsAcknowledged || updateRes.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to update the ingredient weighy" };
+                }
+
+                return new BasicErrorResponse() { Success = true };
+
+            }
+            catch(Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorMessage = $"{ex.Message}" };
+            }
+        }
 
 
         //calcs
@@ -982,7 +1017,7 @@ namespace ElGato_API.Services
             ingridient.Fats *= scalingFactor;
             ingridient.Kcal *= scalingFactor;
         }
-        
+
     }
 
     public class Makros
