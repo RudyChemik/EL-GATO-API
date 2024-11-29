@@ -32,13 +32,6 @@ namespace ElGato_API.Controllers
         /// Handles user registration along with a questionary submission. 
         /// </summary>
         /// <param name="registerVM">An object containing registration creds and questionary information.</param>
-        /// <returns>
-        /// Possible responses:
-        /// - 200 OK successful registration - reuturns a JWT token
-        /// - 400 Bad Request if the model state is invalid, or if registration/login fails
-        /// - 409 Conflict if the email address is already in use
-        /// - 500 Internal Server Error if an unexpected error occurs
-        /// </returns>
         /// <remarks>
         /// This method allows anonymous access and handles both user registration along with questionary processing and saving, registration will fail if the questionary data is invalid.
         /// </remarks>
@@ -87,13 +80,8 @@ namespace ElGato_API.Controllers
         /// Handles user loging in.
         /// </summary>
         /// <param name="loginVM">An object containing login creds</param>
-        /// <returns>
-        /// Possible responses:
-        /// - 200 OK successful - reuturns a JWT token
-        /// - 400 Bad Request if the model state is invalid, or if login fails
-        /// - 500 Internal Server Error if an unexpected error occurs
-        /// </returns>
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginVM loginVM)
         {
             if (!ModelState.IsValid)
@@ -120,5 +108,10 @@ namespace ElGato_API.Controllers
             throw new NotImplementedException();
         }
 
+        [HttpPost]
+        public async Task<IActionResult> DeleteAccount()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

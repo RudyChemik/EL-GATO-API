@@ -32,11 +32,11 @@ namespace ElGato_API.Services
                 _context.AddProductRequest.Add(request);
                 await _context.SaveChangesAsync();
 
-                return new BasicErrorResponse() { Success = true };
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucesfully requested ingridient addition." };
 
             }catch(Exception ex)
             {
-                return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull. {ex.Message}", Success = false };
+                return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull. {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         }
 
@@ -55,10 +55,10 @@ namespace ElGato_API.Services
                 _context.ReportedIngredients.Add(request);
                 await _context.SaveChangesAsync();
 
-                return new BasicErrorResponse() { Success = true };
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucesfully created report request" };
             }
             catch (Exception ex) {
-                return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull. {ex.Message}", Success = false };
+                return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         
         }
@@ -78,11 +78,11 @@ namespace ElGato_API.Services
                 _context.ReportedMeals.Add(request);
                 await _context.SaveChangesAsync();
 
-                return new BasicErrorResponse() { Success = true };
+                return new BasicErrorResponse() { Success = true, ErrorMessage = "Meal report request sucesfull.", ErrorCode = ErrorCodes.Internal };
             }
             catch (Exception ex) 
             {
-                return new BasicErrorResponse() { ErrorMessage = $"Request not succedull, internal error {ex.Message}", Success = false };
+                return new BasicErrorResponse() { ErrorMessage = $"Request not succedull, internal error {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         }
     }
