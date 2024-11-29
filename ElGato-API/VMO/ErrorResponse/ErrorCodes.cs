@@ -6,7 +6,11 @@ namespace ElGato_API.VMO.ErrorResponse
     public enum ErrorCodes
     {
         None,
-        AlreadyExists
+        Internal,
+        ModelStateNotValid,
+        AlreadyExists,
+        NotFound,
+        Failed
     }
 
 }
