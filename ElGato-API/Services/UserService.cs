@@ -24,8 +24,8 @@ namespace ElGato_API.Services
                 var res = await _dbContext.Users.Include(x=>x.CalorieInformation).FirstOrDefaultAsync(a=>a.Id == userId);
                 if (res == null || res.CalorieInformation == null) 
                 {
-                    //error
-                    error.ErrorMessage = "";
+                    error.ErrorMessage = "User calorie intake information not found.";
+                    error.ErrorCode = ErrorCodes.NotFound;
                     return (error, userCalorieIntake);
                 }
 
@@ -35,11 +35,13 @@ namespace ElGato_API.Services
                 userCalorieIntake.Protein = res.CalorieInformation.Protein;
 
                 error.Success = true;
+                error.ErrorCode = ErrorCodes.None;
                 return (error, userCalorieIntake);
             }
             catch (Exception ex) 
             { 
                 error.ErrorMessage = ex.Message;
+                error.ErrorCode = ErrorCodes.Internal;
                 return (error, userCalorieIntake);
             }
         }
