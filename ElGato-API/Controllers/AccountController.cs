@@ -3,6 +3,8 @@ using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
 using ElGato_API.VM;
 using ElGato_API.VM.User_Auth;
+using ElGato_API.VMO.ErrorResponse;
+using ElGato_API.VMO.User;
 using ElGato_API.VMO.UserAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +39,10 @@ namespace ElGato_API.Controllers
         /// </remarks>
         [HttpPost]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(RegisterVMO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> RegisterWithQuestionary([FromBody]RegisterWithQuestVM registerVM) 
         {
             if (!ModelState.IsValid)
@@ -48,19 +54,36 @@ namespace ElGato_API.Controllers
             {
                 var mailStatus = await _accountService.IsEmailAlreadyUsed(registerVM.Email);
                 if (mailStatus)
-                    return StatusCode(409, "E-mail address already in use");
-
+                {
+                    return StatusCode(409, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorCode = ErrorCodes.AlreadyExists,
+                        ErrorMessage = "Account with given E-mail address already exists"
+                    });
+                }
+                    
                 var calorieIntake = _dietService.CalculateCalories(registerVM.Questionary);
                 registerVMO.calorieIntake = calorieIntake;
 
                 var res = await _accountService.RegisterUser(registerVM, calorieIntake);
-                if (!res.Succeeded) { registerVMO.Errors = res.Errors; registerVMO.Success = false; return StatusCode(400, registerVMO); }
+                if (!res.Succeeded) { registerVMO.Errors = res.Errors; registerVMO.Success = false; return StatusCode(400, new BasicErrorResponse()
+                {
+                    ErrorCode = ErrorCodes.Failed,
+                    ErrorMessage = res.Errors.ToString(),
+                    Success = false,
+                }); }
 
                 var loginRes = await _accountService.LoginUser(new LoginVM() { Email = registerVM.Email, Password = registerVM.Password });
                 if (!loginRes.IdentityResult.Succeeded) {
                     registerVMO.Success = false;
-                    
-                    return StatusCode(400, registerVMO);
+
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        ErrorMessage = res.Errors.ToString(),
+                        ErrorCode = ErrorCodes.Failed,
+                        Success = false
+                    });
                 }
 
                 registerVMO.Success = true;
@@ -72,7 +95,7 @@ namespace ElGato_API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Error: Internal server error. {ex.Message}");
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false });
             }
         }
 
@@ -82,6 +105,9 @@ namespace ElGato_API.Controllers
         /// <param name="loginVM">An object containing login creds</param>
         [HttpPost]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginVM loginVM)
         {
             if (!ModelState.IsValid)
@@ -94,12 +120,17 @@ namespace ElGato_API.Controllers
                 if (loginResponse.IdentityResult.Succeeded)
                     return Ok(new { token = loginResponse.JwtToken });
 
-                return StatusCode(400, new { errors = loginResponse.IdentityResult.Errors });
+                return StatusCode(400, new BasicErrorResponse()
+                {
+                    ErrorCode = ErrorCodes.Failed,
+                    ErrorMessage = loginResponse.IdentityResult.Errors.ToString(),
+                    Success = false,
+                });
 
             }
-            catch (Exception ex) { 
-                return StatusCode(500, ex.Message);
-            }        
+            catch (Exception ex) {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false });
+            }
         }
 
         [HttpPost]
