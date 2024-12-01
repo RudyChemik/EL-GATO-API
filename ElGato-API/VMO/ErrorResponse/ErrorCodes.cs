@@ -10,7 +10,8 @@ namespace ElGato_API.VMO.ErrorResponse
         ModelStateNotValid,
         AlreadyExists,
         NotFound,
-        Failed
+        Failed,
+        Forbidden
     }
 
 }

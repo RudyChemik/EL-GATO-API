@@ -96,11 +96,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (res, new BasicErrorResponse() { Success = true });
+                return (res, new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "" });
             }
             catch (Exception ex)
             {
-                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
+                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
 
@@ -181,11 +181,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (res, new BasicErrorResponse() { Success = true });
+                return (res, new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "" });
             }
             catch (Exception ex)
             {
-                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
+                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
 
@@ -266,11 +266,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (res, new BasicErrorResponse() { Success = true });
+                return (res, new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "" });
             }
             catch (Exception ex)
             {
-                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
+                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" , ErrorCode = ErrorCodes.Internal });
             }
         }
 
@@ -324,11 +324,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (res, new BasicErrorResponse() { Success = true });
+                return (res, new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "" });
             }
             catch (Exception ex)
             {
-                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
+                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
 
@@ -379,11 +379,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (res, new BasicErrorResponse() { Success = true });
+                return (res, new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "" });
             }
             catch (Exception ex)
             {
-                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
+                return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
 
@@ -423,7 +423,7 @@ namespace ElGato_API.Services
 
                 if (mealDoc == null)
                 {
-                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found" };
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
                 }
 
                 int likeCounter = mealDoc.LikedCounter;
@@ -467,7 +467,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
-                return new BasicErrorResponse { Success = false, ErrorMessage = $"Internal server error {ex.Message}"};
+                return new BasicErrorResponse { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal};
             }
         }
 
@@ -484,7 +484,7 @@ namespace ElGato_API.Services
 
                 if (mealDoc == null)
                 {
-                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found" };
+                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
                 }
 
                 int saveCounter = mealDoc.SavedCounter;
@@ -527,7 +527,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
-                return new BasicErrorResponse { Success = false, ErrorMessage = $"Interna lserver error {ex.Message}" };
+                return new BasicErrorResponse { Success = false, ErrorMessage = $"Interna lserver error {ex.Message}", ErrorCode = ErrorCodes.Internal };
             }
         }
 
@@ -648,7 +648,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
-                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}" }, res);
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}", ErrorCode = ErrorCodes.Internal }, res);
             }
         }
 
@@ -664,7 +664,7 @@ namespace ElGato_API.Services
                 var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
                 if (doc == null)
                 {
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document null." }, res);
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document null.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
                 var likedMealIds = doc.LikedMeals.Select(ObjectId.Parse).ToList();
@@ -673,7 +673,7 @@ namespace ElGato_API.Services
 
                 if (likedMeals == null || !likedMeals.Any())
                 {
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for liked meals." }, res);
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for liked meals.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
                 var userIds = likedMeals.Select(meal => meal.UserId).Distinct().ToList();
@@ -710,11 +710,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (new BasicErrorResponse() { Success = true }, res);
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Meals retrived sucesfully" }, res);
             }
             catch (Exception ex)
             {
-                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}" }, res);
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}", ErrorCode= ErrorCodes.Internal }, res);
             }
         }
 
@@ -729,7 +729,7 @@ namespace ElGato_API.Services
                 var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
                 if (doc == null)
                 {
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null." }, res);
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
                 var savedMealIds = doc.SavedMeals.Select(ObjectId.Parse).ToList();
@@ -738,7 +738,7 @@ namespace ElGato_API.Services
 
                 if (savedMeals == null || !savedMeals.Any())
                 {
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for saved meals." }, res);
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "No meals found for saved meals.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
                 var userIds = savedMeals.Select(meal => meal.UserId).Distinct().ToList();
@@ -775,11 +775,11 @@ namespace ElGato_API.Services
                     }).ToList();
                 }
 
-                return (new BasicErrorResponse() { Success = true }, res);
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Meals retrived sucesfully" }, res);
             }
             catch (Exception ex)
             {
-                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}" }, res);
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}", ErrorCode = ErrorCodes.Internal }, res);
             }
         }
 
@@ -854,12 +854,12 @@ namespace ElGato_API.Services
                 }
 
                 var currentAchievmentCounter = await _achievmentService.GetCurrentAchivmentIdFromFamily("COOK", userId);
-                if (!currentAchievmentCounter.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong while trying to get current achievment. {currentAchievmentCounter.error.ErrorMessage}" }, null); }
+                if (!currentAchievmentCounter.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong while trying to get current achievment. {currentAchievmentCounter.error.ErrorMessage}", ErrorCode = ErrorCodes.Failed }, null); }
 
                 if (!string.IsNullOrEmpty(currentAchievmentCounter.achievmentName))
                 {
                     var achievmentRes = await _achievmentService.IncrementAchievmentProgress(currentAchievmentCounter.achievmentName, userId);
-                    if (!achievmentRes.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = achievmentRes.error.ErrorMessage }, null); }
+                    if (!achievmentRes.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = achievmentRes.error.ErrorMessage, ErrorCode = ErrorCodes.Failed }, null); }
 
                     return (new BasicErrorResponse() { Success = true }, achievmentRes.ach ?? null);
                 }
@@ -869,7 +869,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
-                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message }, null);
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal }, null);
             }
         }
 
@@ -977,7 +977,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
-                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message }, null);
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal }, null);
             }
         }
 
@@ -988,12 +988,12 @@ namespace ElGato_API.Services
                 var mealDoc = await _mealsCollection.Find(r => r.Id == mealId).FirstOrDefaultAsync();
                 if (mealDoc == null)
                 {
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id" };
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id", ErrorCode = ErrorCodes.NotFound };
                 }
 
                 if (mealDoc.UserId != userId) 
                 {
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Permission denied. Given meal is not created by the user." };
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Permission denied. Given meal is not created by the user.", ErrorCode = ErrorCodes.Forbidden };
                 }
 
                 var deleteResult = await _mealsCollection.DeleteOneAsync(r => r.Id == mealId);
@@ -1004,12 +1004,12 @@ namespace ElGato_API.Services
                 }
                 else
                 {
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to delete the meal" };
+                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to delete the meal", ErrorCode = ErrorCodes.Failed };
                 }
             }
             catch (Exception ex) 
             { 
-                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message };
+                return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal };
             }
         }
 
