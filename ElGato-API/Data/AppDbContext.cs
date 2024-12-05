@@ -1,4 +1,5 @@
 ﻿using ElGato_API.Models.Requests;
+using ElGato_API.Models.Training;
 using ElGato_API.Models.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,11 @@ namespace ElGato_API.Data
                 .WithMany()
                 .HasForeignKey(ac => ac.AchievmentId);
 
+            modelBuilder.Entity<Exercises>()
+            .HasMany(e => e.MusclesEngaded)
+            .WithMany()
+            .UsingEntity(j => j.ToTable("ExerciseMuscles"));
+
             base.OnModelCreating(modelBuilder);
         }
 
@@ -52,6 +58,8 @@ namespace ElGato_API.Data
         public DbSet<ReportedMeals> ReportedMeals { get; set; }
         public DbSet<Achievment> Achievment { get; set; }
         public DbSet<AchievmentCounters> AchievmentCounters { get; set; }
+        public DbSet<Exercises> Exercises { get; set; }
+        public DbSet<Muscle> Muscles { get; set; }
 
     }
 }

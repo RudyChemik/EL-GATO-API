@@ -92,6 +92,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRequestService, UserRequestService>();
 builder.Services.AddScoped<IMealService, MealService>();
 builder.Services.AddScoped<IAchievmentService, AchievmentService>();
+builder.Services.AddScoped<ITrainingService, TrainingService>();
 
 builder.Services.AddScoped<IScrapService, ScrapService>();
 
