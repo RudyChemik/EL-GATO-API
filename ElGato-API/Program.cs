@@ -176,6 +176,13 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/pfp-images"
 });
 
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/Exercises")),
+    RequestPath = "/exercise-images"
+});
+
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAllOrigins");

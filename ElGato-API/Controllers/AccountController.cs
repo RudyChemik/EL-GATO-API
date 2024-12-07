@@ -90,6 +90,7 @@ namespace ElGato_API.Controllers
                 registerVMO.JWT = loginRes.JwtToken;
 
                 await _mongoInits.CreateUserDietDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
+                await _mongoInits.CreateUserTrainingDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
 
                 return Ok(registerVMO);
             }
