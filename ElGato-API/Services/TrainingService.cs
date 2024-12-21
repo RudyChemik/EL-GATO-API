@@ -1,6 +1,7 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
 using ElGato_API.Models.Training;
+using ElGato_API.ModelsMongo.Diet.History;
 using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.ModelsMongo.Training;
 using ElGato_API.VMO.ErrorResponse;
@@ -14,9 +15,11 @@ namespace ElGato_API.Services
     {
         private readonly AppDbContext _context;
         private readonly IMongoCollection<DailyTrainingDocument> _trainingCollection;
+        private readonly IMongoCollection<TrainingHistoryDocument> _trainingHistoryCollection;
         public TrainingService(IMongoDatabase database, AppDbContext context) 
         {
             _trainingCollection = database.GetCollection<DailyTrainingDocument>("DailyTraining");
+            _trainingHistoryCollection = database.GetCollection<TrainingHistoryDocument>("TrainingHistory");
             _context = context;
         }
 
@@ -32,6 +35,7 @@ namespace ElGato_API.Services
                     Name = e.Name,
                     Desc = e.Desc,
                     Image = e.Image,
+                    ImgGifPart = e.ImageGifPart,
                     MusclesEngaged = e.MusclesEngaded.Select(m => new MuscleVMO
                     {
                         Id = m.Id,

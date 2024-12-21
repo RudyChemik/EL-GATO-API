@@ -9,6 +9,7 @@ namespace ElGato_API.Models.Training
         public string Name { get; set; }
         public string Desc { get; set; }
         public string Image { get; set; }
+        public string? ImageGifPart { get; set; }
         public List<Muscle> MusclesEngaded { get; set; }
         public MainBodyPart MainBodyPart { get; set; }
         public SpecificBodyPart SpecificBodyPart { get; set; }

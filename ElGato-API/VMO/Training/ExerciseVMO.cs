@@ -8,6 +8,7 @@ namespace ElGato_API.VMO.Training
         public string Name { get; set; }
         public string Desc { get; set; }
         public string Image { get; set; }
+        public string? ImgGifPart { get; set; }
         public List<MuscleVMO> MusclesEngaged { get; set; } = new List<MuscleVMO>();
         public string MainBodyPart { get; set; }
         public string SpecificBodyPart { get; set; }

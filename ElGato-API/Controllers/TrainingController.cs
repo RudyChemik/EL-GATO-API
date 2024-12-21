@@ -19,7 +19,7 @@ namespace ElGato_API.Controllers
             _trainingService = trainingService;
         }
 
-        [HttpPost]
+        [HttpGet]
         [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(ExerciseVMO), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
@@ -45,6 +45,8 @@ namespace ElGato_API.Controllers
                 return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false });
             }
         }
+
+
 
     }
 }
