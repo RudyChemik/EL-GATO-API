@@ -1,5 +1,7 @@
-﻿using ElGato_API.Interfaces;
+﻿using ElGato_API.Data.JWT;
+using ElGato_API.Interfaces;
 using ElGato_API.Services;
+using ElGato_API.VM.Training;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Meals;
 using ElGato_API.VMO.Training;
@@ -14,9 +16,11 @@ namespace ElGato_API.Controllers
     public class TrainingController : Controller
     {
         private readonly ITrainingService _trainingService;
-        public TrainingController(ITrainingService trainingService)
+        private readonly IJwtService _jwtService;
+        public TrainingController(ITrainingService trainingService, IJwtService jwtService)
         {
             _trainingService = trainingService;
+            _jwtService = jwtService;
         }
 
         [HttpGet]
@@ -46,7 +50,38 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddExerciseToFavourites([FromBody] LikeExerciseVM model)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
 
+                var res = await _trainingService.LikeExercise(userId, model);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        ErrorCodes.AlreadyExists => Conflict(res),
+                        ErrorCodes.NotFound => NotFound(res),
+                        _ => BadRequest(res)
+                    };
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+        }
 
     }
 }
