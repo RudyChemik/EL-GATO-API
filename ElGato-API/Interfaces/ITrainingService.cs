@@ -9,5 +9,6 @@ namespace ElGato_API.Interfaces
     {
         Task<(BasicErrorResponse error, List<ExerciseVMO>? data)> GetAllExercises();
         Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model);
+        Task<BasicErrorResponse> RemoveExerciseFromLiked(string userId, LikeExerciseVM model);
     }
 }
