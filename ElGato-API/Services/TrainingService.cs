@@ -61,6 +61,44 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, List<LikedExercisesVMO>? data)> GetAllLikedExercises(string userId)
+        {
+            try
+            {
+                List<LikedExercisesVMO> likedExercises = new List<LikedExercisesVMO>();
+
+                var userLikesDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userLikesDoc == null)
+                {
+                    LikedExercisesDocument doc = new LikedExercisesDocument()
+                    {
+                        UserId = userId,
+                        Own = new List<string>(),
+                        Premade = new List<LikedExercise>()
+                    };
+
+                    await _trainingLikesCollection.InsertOneAsync(doc);
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true }, likedExercises);
+                }
+
+                foreach(var exercie in userLikesDoc.Own)
+                {
+                    likedExercises.Add(new LikedExercisesVMO() { Name = exercie, Own = true });
+                }
+
+                foreach(var exercise in userLikesDoc.Premade)
+                {
+                    likedExercises.Add(new LikedExercisesVMO() { Name = exercise.Name, Id = exercise.Id, Own = false });
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true }, likedExercises);
+            }
+            catch (Exception ex) 
+            {
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
+            }
+        }
+
         public async Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model)
         {
             try
