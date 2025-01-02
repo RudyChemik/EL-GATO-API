@@ -6,13 +6,13 @@
 # Ignore MealImages folder
 Assets/Images/MealImages/
 
-Assets/Images/Achievments
+Assets/Images/Achievments/
 
 # Ignore PFP's
-Assets/Images/UserPfp
+Assets/Images/UserPfp/
 
 # Ignore Exercises
-Assets/Images/Exercises
+Assets/Images/Exercises/
 
 # Ignore appsettings.json
 appsettings.json
