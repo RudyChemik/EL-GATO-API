@@ -80,41 +80,7 @@ namespace ElGato_API.Controllers
             }
         }
 
-
-        [HttpPost]
-        [Authorize(Policy = "user")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status409Conflict)]
-        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
-        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> AddExerciseToFavourites([FromBody] LikeExerciseVM model)
-        {
-            try
-            {
-                string userId = _jwtService.GetUserIdClaim();
-
-                var res = await _trainingService.LikeExercise(userId, model);
-                if (!res.Success)
-                {
-                    return res.ErrorCode switch
-                    {
-                        ErrorCodes.Internal => StatusCode(500, res),
-                        ErrorCodes.AlreadyExists => Conflict(res),
-                        ErrorCodes.NotFound => NotFound(res),
-                        _ => BadRequest(res)
-                    };
-                }
-
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
-            }
-        }
-
-        [HttpPost]
+        [HttpGet]
         [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(TrainingDayVMO), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
@@ -144,6 +110,90 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddExercisesToTrainingDay([FromBody] AddExerciseToTrainingVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                string userId = _jwtService.GetUserIdClaim();
+                var res = await _trainingService.AddExercisesToTrainingDay(userId, model);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res),
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        _ => BadRequest(res)
+                    };
+                }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}" , Success = false});
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status409Conflict)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddExerciseToFavourites([FromBody] LikeExerciseVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                string userId = _jwtService.GetUserIdClaim();
+
+                var res = await _trainingService.LikeExercise(userId, model);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        ErrorCodes.AlreadyExists => Conflict(res),
+                        ErrorCodes.NotFound => NotFound(res),
+                        _ => BadRequest(res)
+                    };
+                }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+        }
+
+
         [HttpDelete]
         [Authorize(Policy = "user")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -154,6 +204,16 @@ namespace ElGato_API.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
                 string userId = _jwtService.GetUserIdClaim();
 
                 var res = await _trainingService.RemoveExercisesFromLiked(userId, model);

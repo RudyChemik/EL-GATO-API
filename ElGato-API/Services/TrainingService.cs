@@ -11,6 +11,8 @@ using ElGato_API.VMO.Training;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
+using System.Collections.Generic;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -142,6 +144,47 @@ namespace ElGato_API.Services
             catch(Exception ex)
             {
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<BasicErrorResponse> AddExercisesToTrainingDay(string userId, AddExerciseToTrainingVM model)
+        {
+            try
+            {
+                var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if (userTrainingDocument == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." }; }
+
+                var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
+                if (targetedPlan == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "couldn''y find any matching dates in training document, proces terminated" };
+                }
+
+                int lastId = targetedPlan.Exercises[targetedPlan.Exercises.Count() - 1].PublicId + 1;
+                List<DailyExercise> listOfExercisesForInsertion = new List<DailyExercise>();
+
+                foreach(var ex in model.Name)
+                {
+                    DailyExercise daileEx = new DailyExercise()
+                    {
+                        Name = ex,
+                        PublicId = lastId,
+                        Series = new List<ExerciseSeries>(),
+                    };
+
+                    listOfExercisesForInsertion.Add(daileEx);
+                    lastId++;
+                }
+
+                targetedPlan.Exercises.AddRange(listOfExercisesForInsertion);
+
+                await _trainingCollection.ReplaceOneAsync(a=>a.UserId == userId, userTrainingDocument);
+
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"an error occurec {ex.Message}", Success = false };
             }
         }
 
