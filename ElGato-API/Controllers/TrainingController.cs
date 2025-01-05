@@ -114,19 +114,20 @@ namespace ElGato_API.Controllers
             }
         }
 
+
         [HttpDelete]
         [Authorize(Policy = "user")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> RemoveExerciseFromFavourites([FromBody] LikeExerciseVM model)
+        public async Task<IActionResult> RemoveExercisesFromFavourites([FromBody] List<LikeExerciseVM> model)
         {
             try
             {
                 string userId = _jwtService.GetUserIdClaim();
 
-                var res = await _trainingService.RemoveExerciseFromLiked(userId, model);
+                var res = await _trainingService.RemoveExercisesFromLiked(userId, model);
                 if (!res.Success)
                 {
                     return res.ErrorCode switch

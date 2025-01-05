@@ -163,44 +163,46 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
         }
+    
 
-        public async Task<BasicErrorResponse> RemoveExerciseFromLiked(string userId, LikeExerciseVM model)
+        public async Task<BasicErrorResponse> RemoveExercisesFromLiked(string userId, List<LikeExerciseVM> model)
         {
-            try
+            try 
             {
                 var existingDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
                 if (existingDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User liked exercise document not found.", Success = false }; }
 
-                if (model.Own)
+                foreach (var exercise in model) 
                 {
-                    var exerciseToRemove = existingDoc.Own.FirstOrDefault(model.Name);
-                    if (exerciseToRemove == null)
+                    if (exercise.Own)
                     {
-                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Given own exercise not found", Success = false };
-                    }
+                        var exerciseToRemove = existingDoc.Own.FirstOrDefault(e => e == exercise.Name);
+                        if (exerciseToRemove == null)
+                        {
+                            return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Given own exercise not found {exercise.Name}", Success = false };
+                        }
 
-                    existingDoc.Own.Remove(exerciseToRemove);
-                }
-                else
-                {
-                   var exerciseToRemove = existingDoc.Premade.FirstOrDefault(a => a.Id == model.Id);
-                    if (exerciseToRemove == null)
+                        existingDoc.Own.Remove(exerciseToRemove);
+                    }
+                    else
                     {
-                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Given premade exercise not found", Success = false };
-                    }
+                        var exerciseToRemove = existingDoc.Premade.FirstOrDefault(a => a.Id == exercise.Id);
+                        if (exerciseToRemove == null)
+                        {
+                            return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Given premade exercise not found {exercise.Name},{exercise.Id}", Success = false };
+                        }
 
-                    existingDoc.Premade.Remove(exerciseToRemove);
+                        existingDoc.Premade.Remove(exerciseToRemove);
+                    }
                 }
 
                 await _trainingLikesCollection.ReplaceOneAsync(a => a.UserId == userId, existingDoc);
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true };
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
         }
-
-
     }
 }
