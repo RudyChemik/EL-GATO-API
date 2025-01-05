@@ -114,6 +114,35 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(TrainingDayVMO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTrainingDay(DateTime date)
+        {
+            try
+            {
+                string userId = _jwtService.GetUserIdClaim();
+                var res = await _trainingService.GetUserTrainingDay(userId, date);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res.error.ErrorMessage),
+                        ErrorCodes.Internal => StatusCode(500, res.error.ErrorMessage),
+                        _ => BadRequest(res)
+                    };
+                }
+
+                return Ok(res.data);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+        }
 
         [HttpDelete]
         [Authorize(Policy = "user")]

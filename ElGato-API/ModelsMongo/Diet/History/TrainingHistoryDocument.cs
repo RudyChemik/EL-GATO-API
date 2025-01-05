@@ -7,6 +7,6 @@ namespace ElGato_API.ModelsMongo.Diet.History
     {
         public ObjectId Id { get; set; }
         public string UserId { get; set; }
-        List<DailyTrainingPlan> DailyTrainingPlans { get; set; } = new List<DailyTrainingPlan>();
+        public List<DailyTrainingPlan> DailyTrainingPlans { get; set; } = new List<DailyTrainingPlan>();
     }
 }

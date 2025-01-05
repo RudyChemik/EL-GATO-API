@@ -1,6 +1,7 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
 using ElGato_API.Models.Training;
+using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.Diet.History;
 using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.ModelsMongo.Training;
@@ -94,6 +95,51 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true }, likedExercises);
             }
             catch (Exception ex) 
+            {
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<(BasicErrorResponse error, TrainingDayVMO? data)> GetUserTrainingDay(string userId, DateTime date)
+        {
+            try
+            {
+                var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if(userTrainingDocument == null) { return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User training document not found", Success = false }, null); }
+             
+                var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a=>a.Date == date);
+                if(targetedPlan != null)
+                {
+                    TrainingDayVMO data = new TrainingDayVMO()
+                    {
+                        Date = date,
+                        Exercises = targetedPlan.Exercises,
+                    };
+
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true}, data);
+                }
+
+                if(userTrainingDocument.Trainings != null && userTrainingDocument.Trainings.Count() >= 6)
+                {
+                    var oldestTraining = userTrainingDocument.Trainings.OrderBy(dp => dp.Date).First();
+                    await MoveTrainingToHistory(userId, oldestTraining);
+
+                    var update = Builders<DailyTrainingDocument>.Update.PullFilter(d => d.Trainings, dp => dp.Date == oldestTraining.Date);
+                    await _trainingCollection.UpdateOneAsync(d => d.UserId == userId, update);
+                }
+
+                DailyTrainingPlan trainingUpd = new DailyTrainingPlan()
+                {
+                    Date = date,
+                    Exercises = new List<DailyExercise>(),
+                };
+
+                var updated = Builders<DailyTrainingDocument>.Update.Push(d => d.Trainings, trainingUpd);
+                await _trainingCollection.UpdateOneAsync(d => d.UserId == userId, updated);
+
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None }, new TrainingDayVMO() { Date = date, Exercises = new List<DailyExercise>() });
+            }
+            catch(Exception ex)
             {
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
             }
@@ -203,6 +249,26 @@ namespace ElGato_API.Services
             {
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
+        }
+
+
+        private async Task MoveTrainingToHistory(string userId, DailyTrainingPlan oldestPlan)
+        {
+            var trainingHistoryDoc = await _trainingHistoryCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+            if (trainingHistoryDoc == null)
+            {
+                TrainingHistoryDocument historyDoc = new TrainingHistoryDocument()
+                {
+                    UserId = userId,
+                    DailyTrainingPlans = new List<DailyTrainingPlan> { oldestPlan }
+                };
+
+                await _trainingHistoryCollection.InsertOneAsync(historyDoc);
+                return;
+            }
+
+            var update = Builders<TrainingHistoryDocument>.Update.Push(h => h.DailyTrainingPlans, oldestPlan);
+            await _trainingHistoryCollection.UpdateOneAsync(h => h.UserId == userId, update);
         }
     }
 }

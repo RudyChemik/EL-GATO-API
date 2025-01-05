@@ -3,6 +3,7 @@
     public class DailyExercise
     {
         public string Name { get; set; }
+        public int PublicId { get; set; }
         public List<ExerciseSeries> Series { get; set; }
     }
 
