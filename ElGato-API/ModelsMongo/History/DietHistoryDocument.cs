@@ -1,6 +1,7 @@
-﻿using MongoDB.Bson;
+﻿using ElGato_API.ModelsMongo.Diet;
+using MongoDB.Bson;
 
-namespace ElGato_API.ModelsMongo.Diet.History
+namespace ElGato_API.ModelsMongo.History
 {
     public class DietHistoryDocument
     {

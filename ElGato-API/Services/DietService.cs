@@ -1,7 +1,7 @@
 ﻿using ElGato_API.Interfaces;
 using ElGato_API.Models.User;
 using ElGato_API.ModelsMongo.Diet;
-using ElGato_API.ModelsMongo.Diet.History;
+using ElGato_API.ModelsMongo.History;
 using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.VM.Diet;
 using ElGato_API.VMO.Diet;

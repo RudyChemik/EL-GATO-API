@@ -2,7 +2,7 @@
 using ElGato_API.Interfaces;
 using ElGato_API.Models.Training;
 using ElGato_API.ModelsMongo.Diet;
-using ElGato_API.ModelsMongo.Diet.History;
+using ElGato_API.ModelsMongo.History;
 using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.ModelsMongo.Training;
 using ElGato_API.VM.Training;
@@ -11,8 +11,6 @@ using ElGato_API.VMO.Training;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
-using System.Collections.Generic;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -22,11 +20,13 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<DailyTrainingDocument> _trainingCollection;
         private readonly IMongoCollection<TrainingHistoryDocument> _trainingHistoryCollection;
         private readonly IMongoCollection<LikedExercisesDocument> _trainingLikesCollection;
+        private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
         public TrainingService(IMongoDatabase database, AppDbContext context) 
         {
             _trainingCollection = database.GetCollection<DailyTrainingDocument>("DailyTraining");
             _trainingHistoryCollection = database.GetCollection<TrainingHistoryDocument>("TrainingHistory");
             _trainingLikesCollection = database.GetCollection<LikedExercisesDocument>("LikedExercises");
+            _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
             _context = context;
         }
 
@@ -112,10 +112,24 @@ namespace ElGato_API.Services
                 var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a=>a.Date == date);
                 if(targetedPlan != null)
                 {
+                    List<TrainingDayExerciseVMO> modelList = new List<TrainingDayExerciseVMO>();
+                    foreach (var ex in targetedPlan.Exercises)
+                    {
+                        var pastData = await GetPastDataFromExercise(userId, date, ex.Name);
+
+                        TrainingDayExerciseVMO modelExercise = new TrainingDayExerciseVMO()
+                        {
+                            Exercise = ex,
+                            PastData = pastData,
+                        };
+
+                        modelList.Add(modelExercise);
+                    }
+
                     TrainingDayVMO data = new TrainingDayVMO()
                     {
                         Date = date,
-                        Exercises = targetedPlan.Exercises,
+                        Exercises = modelList,
                     };
 
                     return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true}, data);
@@ -139,7 +153,7 @@ namespace ElGato_API.Services
                 var updated = Builders<DailyTrainingDocument>.Update.Push(d => d.Trainings, trainingUpd);
                 await _trainingCollection.UpdateOneAsync(d => d.UserId == userId, updated);
 
-                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None }, new TrainingDayVMO() { Date = date, Exercises = new List<DailyExercise>() });
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None }, new TrainingDayVMO() { Date = date, Exercises = new List<TrainingDayExerciseVMO>()});
             }
             catch(Exception ex)
             {
@@ -160,7 +174,12 @@ namespace ElGato_API.Services
                     return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "couldn''y find any matching dates in training document, proces terminated" };
                 }
 
-                int lastId = targetedPlan.Exercises[targetedPlan.Exercises.Count() - 1].PublicId + 1;
+                int lastId = 0;
+                if (targetedPlan.Exercises != null && targetedPlan.Exercises.Count() > 0)
+                {
+                    lastId = targetedPlan.Exercises[targetedPlan.Exercises.Count() - 1].PublicId + 1;
+                }
+
                 List<DailyExercise> listOfExercisesForInsertion = new List<DailyExercise>();
 
                 foreach(var ex in model.Name)
@@ -313,5 +332,43 @@ namespace ElGato_API.Services
             var update = Builders<TrainingHistoryDocument>.Update.Push(h => h.DailyTrainingPlans, oldestPlan);
             await _trainingHistoryCollection.UpdateOneAsync(h => h.UserId == userId, update);
         }
+
+        private async Task<PastExerciseData?> GetPastDataFromExercise(string userId, DateTime currentDate, string exerciseName)
+        {
+            PastExerciseData data = null;
+
+            var filter = Builders<ExercisesHistoryDocument>.Filter.And(
+                Builders<ExercisesHistoryDocument>.Filter.Eq(e => e.UserId, userId),
+                Builders<ExercisesHistoryDocument>.Filter.ElemMatch(
+                    e => e.ExerciseHistoryLists,
+                    eh => eh.ExerciseName == exerciseName
+                )
+            );
+
+            var projection = Builders<ExercisesHistoryDocument>.Projection.Expression(doc =>
+                doc.ExerciseHistoryLists
+                    .Where(eh => eh.ExerciseName == exerciseName)
+                    .SelectMany(eh => eh.ExerciseData)
+                    .Where(ed => ed.Date < currentDate)
+                    .OrderByDescending(ed => ed.Date)
+                    .FirstOrDefault()
+            );
+
+            var res = await _exercisesHistoryCollection
+                .Find(filter)
+                .Project(projection)
+                .FirstOrDefaultAsync();
+
+            if(res != null)
+            {
+                data = new PastExerciseData();
+                data.Series = res.Series??new List<ExerciseSeries>();
+                data.Date = res.Date;
+            }
+
+
+            return data;
+        }
+
     }
 }

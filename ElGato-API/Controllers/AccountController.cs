@@ -91,6 +91,7 @@ namespace ElGato_API.Controllers
 
                 await _mongoInits.CreateUserDietDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
                 await _mongoInits.CreateUserTrainingDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
+                await _mongoInits.CreateUserExerciseHistoryDocument(_jwtService.GetUserIdClaimStringBased(loginRes.JwtToken));
 
                 return Ok(registerVMO);
             }
@@ -140,7 +141,7 @@ namespace ElGato_API.Controllers
             throw new NotImplementedException();
         }
 
-        [HttpPost]
+        [HttpDelete]
         public async Task<IActionResult> DeleteAccount()
         {
             throw new NotImplementedException();

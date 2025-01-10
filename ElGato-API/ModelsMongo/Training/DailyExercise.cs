@@ -11,7 +11,8 @@
     {
         public int Id { get; set; }
         public int Repetitions { get; set; }
-        public double Weight { get; set; }
+        public double WeightKg { get; set; }
+        public double WeightLbs { get; set; }
         public ExerciseSerieTempo? Tempo { get; set; }
     }
 
