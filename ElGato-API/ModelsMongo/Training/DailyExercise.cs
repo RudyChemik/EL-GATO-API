@@ -9,7 +9,7 @@
 
     public class ExerciseSeries
     {
-        public int Id { get; set; }
+        public int PublicId { get; set; }
         public int Repetitions { get; set; }
         public double WeightKg { get; set; }
         public double WeightLbs { get; set; }

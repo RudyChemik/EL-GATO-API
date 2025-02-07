@@ -135,7 +135,7 @@ namespace ElGato_API.Services
                     return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true}, data);
                 }
 
-                if(userTrainingDocument.Trainings != null && userTrainingDocument.Trainings.Count() >= 6)
+                if(userTrainingDocument.Trainings != null && userTrainingDocument.Trainings.Count() >= 7)
                 {
                     var oldestTraining = userTrainingDocument.Trainings.OrderBy(dp => dp.Date).First();
                     await MoveTrainingToHistory(userId, oldestTraining);

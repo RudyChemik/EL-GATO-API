@@ -131,6 +131,7 @@ namespace ElGato_API.Controllers
                 }
 
                 string userId = _jwtService.GetUserIdClaim();
+                model.Name = model.Name.Distinct().ToList();
                 var res = await _trainingService.AddExercisesToTrainingDay(userId, model);
                 if (!res.Success)
                 {

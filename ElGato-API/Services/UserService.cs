@@ -14,6 +14,24 @@ namespace ElGato_API.Services
             _dbContext = dbContext;
         }
 
+        public async Task<(BasicErrorResponse error, string? data)> GetSystem(string userId)
+        {
+            try
+            {
+                var res = await _dbContext.AppUser.FirstOrDefaultAsync(a=>a.Id == userId);
+                if(res == null)
+                {
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"user with specified id not found", Success = false }, null);
+                }
+
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None }, res.Metric ? "metric" : "imperial");
+            }
+            catch (Exception ex) 
+            {
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"something went wrong, {ex.Message} ", Success = false}, null);
+            }            
+        }
+
         public async Task<(BasicErrorResponse error, UserCalorieIntake model)> GetUserCalories(string userId)
         {
             BasicErrorResponse error = new BasicErrorResponse() { Success = false };

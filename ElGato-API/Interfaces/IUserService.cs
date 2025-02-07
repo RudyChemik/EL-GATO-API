@@ -6,5 +6,6 @@ namespace ElGato_API.Interfaces
     public interface IUserService
     {
         Task<(BasicErrorResponse error, UserCalorieIntake model)> GetUserCalories(string userId);
+        Task<(BasicErrorResponse error, string? data)> GetSystem(string userId);
     }
 }
