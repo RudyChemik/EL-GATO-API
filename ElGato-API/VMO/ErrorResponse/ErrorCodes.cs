@@ -11,7 +11,7 @@ namespace ElGato_API.VMO.ErrorResponse
         AlreadyExists,
         NotFound,
         Failed,
-        Forbidden
+        Forbidden,
     }
 
 }

@@ -10,6 +10,7 @@ using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Training;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ElGato_API.Services
@@ -368,6 +369,118 @@ namespace ElGato_API.Services
 
 
             return data;
+        }
+
+        public async Task<BasicErrorResponse> WriteSeriesForAnExercise(string userId, AddSeriesToAnExerciseVM model)
+        {
+            try
+            {
+                if (!model.Series.Any())
+                {
+                    model.Series.Add(new AddSeriesVM()
+                    {
+                        Repetitions = 0,
+                        WeightKg = 0,
+                        WeightLbs = 0,
+                    });
+                }
+
+                foreach (var series in model.Series)
+                {
+                    if (series.WeightKg == 0)
+                    {
+                        series.WeightKg = (series.WeightLbs / 2.20462);
+                    }
+                    else if (series.WeightLbs == 0)
+                    {
+                        series.WeightLbs = (series.WeightKg * 2.20462);
+                    }
+                }
+
+                var filter = Builders<DailyTrainingDocument>.Filter.And(
+                    Builders<DailyTrainingDocument>.Filter.Eq(t => t.UserId, userId),
+                    Builders<DailyTrainingDocument>.Filter.ElemMatch(t => t.Trainings, training => training.Date == model.Date)
+                );
+
+                var trainingDocument = await _trainingCollection.Find(filter).FirstOrDefaultAsync();
+                if (trainingDocument == null)
+                {
+                    return new BasicErrorResponse
+                    {
+                        Success = false,
+                        ErrorMessage = "Training document not found for the given user",
+                        ErrorCode = ErrorCodes.NotFound
+                    };
+                }
+
+                var trainingIndex = trainingDocument.Trainings.FindIndex(t => t.Date == model.Date);
+                if (trainingIndex == -1)
+                {
+                    return new BasicErrorResponse
+                    {
+                        Success = false,
+                        ErrorMessage = "Training session not found for the given date",
+                        ErrorCode = ErrorCodes.NotFound
+                    };
+                }
+
+                var exerciseIndex = trainingDocument.Trainings[trainingIndex].Exercises.FindIndex(e => e.PublicId == model.PublicId);
+                if (exerciseIndex == -1)
+                {
+                    return new BasicErrorResponse
+                    {
+                        Success = false,
+                        ErrorMessage = "Exercise not found in the training session",
+                        ErrorCode = ErrorCodes.NotFound
+                    };
+                }
+
+                int highestPublicId = trainingDocument.Trainings[trainingIndex].Exercises[exerciseIndex].Series.Any()
+                    ? trainingDocument.Trainings[trainingIndex].Exercises[exerciseIndex].Series.Max(s => s.PublicId)
+                    : 0;
+
+                var newSeriesList = model.Series.Select((series, index) => new ExerciseSeries
+                {
+                    PublicId = highestPublicId + index + 1,
+                    Repetitions = series.Repetitions,
+                    WeightKg = series.WeightKg,
+                    WeightLbs = series.WeightLbs
+                }).ToList();
+
+                var updateFilter = Builders<DailyTrainingDocument>.Filter.And(
+                    Builders<DailyTrainingDocument>.Filter.Eq(t => t.UserId, userId),
+                    Builders<DailyTrainingDocument>.Filter.Eq($"Trainings.{trainingIndex}.Exercises.{exerciseIndex}.PublicId", model.PublicId)
+                );
+
+                var update = Builders<DailyTrainingDocument>.Update.PushEach($"Trainings.{trainingIndex}.Exercises.{exerciseIndex}.Series", newSeriesList);
+
+                var result = await _trainingCollection.UpdateOneAsync(updateFilter, update);
+
+                if (result.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse
+                    {
+                        Success = false,
+                        ErrorMessage = "Failed to add series to exercise",
+                        ErrorCode = ErrorCodes.Failed
+                    };
+                }
+
+                return new BasicErrorResponse
+                {
+                    Success = true,
+                    ErrorCode = ErrorCodes.None
+                };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse
+                {
+                    Success = false,
+                    ErrorMessage = $"An internal server error occurred {ex.Message}",
+                    ErrorCode = ErrorCodes.Internal
+                };
+            }
         }
 
     }
