@@ -189,7 +189,7 @@ namespace ElGato_API.Services
                     {
                         Name = ex,
                         PublicId = lastId,
-                        Series = new List<ExerciseSeries>(),
+                        Series = new List<ExerciseSeries>() { new ExerciseSeries() { PublicId = 1, Repetitions = 0, WeightKg = 0, WeightLbs = 0, Tempo = new ExerciseSerieTempo() { } } },
                     };
 
                     listOfExercisesForInsertion.Add(daileEx);
@@ -482,6 +482,83 @@ namespace ElGato_API.Services
                 };
             }
         }
+
+        public async Task<BasicErrorResponse> UpdateExerciseHistory(string userId, HistoryUpdateVM model, DateTime date)
+        {
+            try
+            {
+                var userHistoryDocument = await _exercisesHistoryCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if (userHistoryDocument == null)
+                {
+                    ExercisesHistoryDocument doc = new ExercisesHistoryDocument()
+                    {
+                        UserId = userId,
+                        ExerciseHistoryLists = new List<ExerciseHistoryList>()
+                        {
+                            new ExerciseHistoryList()
+                            {
+                                ExerciseName = model.ExerciseName,
+                                ExerciseData = new List<ExerciseData>()
+                                {
+                                    model.ExerciseData,
+                                }
+                            }
+                            
+                        }
+                    };
+
+                    await _exercisesHistoryCollection.InsertOneAsync(doc);
+                    return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = $"Success" }; 
+                }
+
+                var givenExercisePastData = userHistoryDocument.ExerciseHistoryLists.FirstOrDefault(a=>a.ExerciseName == model.ExerciseName);
+                if(givenExercisePastData == null)
+                {
+                    ExerciseHistoryList newRecord = new ExerciseHistoryList()
+                    {
+                        ExerciseName= model.ExerciseName,
+                        ExerciseData= new List<ExerciseData>() { model.ExerciseData }
+                    };
+
+                    userHistoryDocument.ExerciseHistoryLists.Add(newRecord);
+
+                    var filter = Builders<ExercisesHistoryDocument>.Filter.Eq(a => a.UserId, userId);
+                    var update = Builders<ExercisesHistoryDocument>.Update.Set(a => a.ExerciseHistoryLists, userHistoryDocument.ExerciseHistoryLists);
+
+                    await _exercisesHistoryCollection.UpdateOneAsync(filter, update);
+
+                    return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Success" };
+                }
+
+                var exercisePastDay = givenExercisePastData.ExerciseData.FirstOrDefault(a => a.Date == date);
+                if (exercisePastDay == null)
+                {
+                    givenExercisePastData.ExerciseData.Add(model.ExerciseData);
+                }
+                else
+                {
+                    exercisePastDay.Series = model.ExerciseData.Series;
+                }
+
+                var updateFilter = Builders<ExercisesHistoryDocument>.Filter.Eq(a => a.UserId, userId);
+                var updateDefinition = Builders<ExercisesHistoryDocument>.Update.Set(a => a.ExerciseHistoryLists, userHistoryDocument.ExerciseHistoryLists);
+
+                await _exercisesHistoryCollection.UpdateOneAsync(updateFilter, updateDefinition);
+
+                return new BasicErrorResponse { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse
+                {
+                    Success = false,
+                    ErrorMessage = $"An internal server error occurred {ex.Message}",
+                    ErrorCode = ErrorCodes.Internal
+                };
+            }
+        }
+
+
 
     }
 }

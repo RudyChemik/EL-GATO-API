@@ -1,9 +1,14 @@
 ﻿using ElGato_API.ModelsMongo.Training;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson;
 
 namespace ElGato_API.ModelsMongo.History
 {
     public class ExercisesHistoryDocument
     {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
         public string UserId { get; set; }
         public List<ExerciseHistoryList> ExerciseHistoryLists {  get; set; } = new List<ExerciseHistoryList>();
     }

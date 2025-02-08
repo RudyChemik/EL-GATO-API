@@ -217,9 +217,12 @@ namespace ElGato_API.Controllers
 
                 string userId = _jwtService.GetUserIdClaim();
 
-                var tasks = model.Select(model => _trainingService.WriteSeriesForAnExercise(userId, model));
+                var writeTasks = model.Select(m => _trainingService.WriteSeriesForAnExercise(userId, m));
+                var updateTasks = model.Select(m => _trainingService.UpdateExerciseHistory(userId, m.HistoryUpdate, m.Date));
 
-                var res = await Task.WhenAll(tasks);
+                var allTasks = writeTasks.Concat(updateTasks);
+
+                var res = await Task.WhenAll(allTasks);
                 var failed = res.Where(r => !r.Success).ToList();
 
                 if (failed.Any())
