@@ -558,7 +558,43 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> RemoveSeriesFromAnExercise(string userId, RemoveSeriesFromExerciseVM model)
+        {
+            try
+            {
+                var trainingDocument = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (trainingDocument == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; }
 
+                if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
 
+                var targetedDay = trainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
+                if (targetedDay == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Current exercise day does not exist." }; }
+
+                var targetExercise = targetedDay.Exercises.FirstOrDefault(a => a.PublicId == model.ExercisePublicId);
+                if (targetExercise == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Exercise not found. Couldnt perform remove operation.", Success = false }; }
+
+                foreach (var idToRemove in model.seriesIdToRemove)
+                {
+                    var serieToRemove = targetExercise.Series.FirstOrDefault(a => a.PublicId == idToRemove);
+                    if (serieToRemove != null)
+                    {
+                        targetExercise.Series.Remove(serieToRemove);
+                    }
+                }
+
+                var updateResult = await _trainingCollection.ReplaceOneAsync(doc => doc.UserId == userId, trainingDocument);
+
+                if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.Failed, ErrorMessage = $"Failed while performing the update", Success = false };
+                }
+
+                return new BasicErrorResponse { Success = true };
+            }
+            catch(Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"{ex.Message}" };
+            }
+        }
     }
 }

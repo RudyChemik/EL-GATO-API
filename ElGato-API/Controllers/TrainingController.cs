@@ -245,6 +245,57 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RemoveSeriesFromAnExercise([FromBody] List<RemoveSeriesFromExerciseVM> model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                string userId = _jwtService.GetUserIdClaim();
+
+                var deleteTasks = model.Select(m => _trainingService.RemoveSeriesFromAnExercise(userId, m));
+                var patchTasks = model.Select(m => _trainingService.UpdateExerciseHistory(userId, m.HistoryUpdate, m.Date));
+
+                var allTasks = deleteTasks.Concat(patchTasks);
+                var res = await Task.WhenAll(allTasks);
+
+                var failed = res.Where(r => !r.Success).ToList();
+
+                if (failed.Any())
+                {
+                    var firstError = failed.First();
+                    return firstError.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(firstError),
+                        ErrorCodes.Failed => StatusCode(500, firstError),
+                        ErrorCodes.Internal => StatusCode(500, firstError),
+                        _ => BadRequest(firstError),
+                    };
+                }
+
+                return Ok();
+
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false });
+            }
+        }
+
 
         [HttpDelete]
         [Authorize(Policy = "user")]
