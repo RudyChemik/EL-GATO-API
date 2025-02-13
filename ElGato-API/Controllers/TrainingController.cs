@@ -296,6 +296,51 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RemoveExercisesFromTrainingDay([FromBody] List<RemoveExerciseFromTrainingDayVM> model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                string userId = _jwtService.GetUserIdClaim();
+
+                var removeTasks = model.Select(m => _trainingService.RemoveExerciseFromTrainingDay(userId, m));
+                var res = await Task.WhenAll(removeTasks);
+
+                var failed = res.Where(r => !r.Success).ToList();
+                if (failed.Any())
+                {
+                    var firstError = failed.First();
+                    return firstError.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(firstError),
+                        ErrorCodes.Failed => StatusCode(500, firstError),
+                        ErrorCodes.Internal => StatusCode(500, firstError),
+                        _ => BadRequest(firstError),
+                    };
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, $"An internl server error occured {ex.Message}");
+            }
+        }
 
         [HttpDelete]
         [Authorize(Policy = "user")]

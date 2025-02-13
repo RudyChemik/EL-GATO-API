@@ -596,5 +596,55 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"{ex.Message}" };
             }
         }
+
+        public async Task<BasicErrorResponse> RemoveExerciseFromTrainingDay(string userId, RemoveExerciseFromTrainingDayVM model)
+        {
+            try
+            {
+                var trainingDocument = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (trainingDocument == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; }
+
+                if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
+
+                var targetedDay = trainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
+                if (targetedDay == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Current exercise day does not exist." }; }
+
+                var targetExercise = targetedDay.Exercises.FirstOrDefault(a => a.PublicId == model.ExerciseId);
+                if (targetExercise == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Exercise not found. Couldnt perform remove operation.", Success = false }; }
+
+                targetedDay.Exercises.Remove(targetExercise);
+
+                var updateResult = await _trainingCollection.ReplaceOneAsync(doc => doc.UserId == userId, trainingDocument);
+                if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.Failed, ErrorMessage = $"Failed while performing the update", Success = false };
+                }
+
+                var similar = targetedDay.Exercises.Where(a=>a.Name == targetExercise.Name).ToList();
+
+                List<ExerciseSeries> hisSeries = new List<ExerciseSeries>();
+
+                if (similar.Any())
+                {                   
+                    foreach(var ex in similar)
+                    {
+                        hisSeries.AddRange(ex.Series);
+                    }
+                }
+
+                HistoryUpdateVM hisModel = new HistoryUpdateVM()
+                {
+                    ExerciseName = targetExercise.Name,
+                    ExerciseData = new ExerciseData() { Date = model.Date, Series = hisSeries }
+                };
+
+                var res = await UpdateExerciseHistory(userId, hisModel, model.Date);
+                return res;
+            }
+            catch(Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode= ErrorCodes.Internal, ErrorMessage = $"Failed {ex.Message}", Success =false };
+            }
+        }
     }
 }
