@@ -4,6 +4,7 @@
     {
         public string Name { get; set; }
         public int PublicId { get; set; }
+        public bool IsLiked { get; set; } = false;
         public List<ExerciseSeries> Series { get; set; }
     }
 

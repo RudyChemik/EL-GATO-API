@@ -646,5 +646,84 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { ErrorCode= ErrorCodes.Internal, ErrorMessage = $"Failed {ex.Message}", Success =false };
             }
         }
+
+        public async Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName)
+        {
+            try
+            {
+                bool isExercisePremade = false;
+                var premadeRec = await _context.Exercises.FirstOrDefaultAsync(a => a.Name == exerciseName);
+                if (premadeRec != null) { isExercisePremade = true; }
+
+                var userLikedDocument = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userLikedDocument == null)
+                {
+                    LikedExercisesDocument newDoc = new LikedExercisesDocument()
+                    {
+                        UserId = userId,
+                        Own = new List<string> { },
+                        Premade = new List<LikedExercise>(),
+                    };
+
+                    if (isExercisePremade)
+                    {
+                        LikedExercise newRec = new LikedExercise()
+                        {
+                            Name = exerciseName,
+                            Id = premadeRec.Id,
+                        };
+
+                        newDoc.Premade.Add(newRec);
+                    }
+                    else
+                    {
+                        newDoc.Own.Add(exerciseName);
+                    }
+
+                    await _trainingLikesCollection.InsertOneAsync(newDoc);
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Removed sucesfully", Success = true };
+                }
+
+                if (isExercisePremade)
+                {
+                    var alreadyExisting = userLikedDocument.Premade.FirstOrDefault(a => a.Name == exerciseName);
+                    if (alreadyExisting != null)
+                    {
+                        userLikedDocument.Premade.Remove(alreadyExisting);
+                    }
+                    else
+                    {
+                        LikedExercise newRec = new LikedExercise()
+                        {
+                            Name = exerciseName,
+                            Id = premadeRec.Id,
+                        };
+                        userLikedDocument.Premade.Add(newRec);
+                    }
+                }
+                else
+                {
+                    var alreadyExisting = userLikedDocument.Own.FirstOrDefault(x => x == exerciseName);
+                    if (alreadyExisting != null)
+                    {
+                        userLikedDocument.Own.Remove(alreadyExisting);
+                    }
+                    else
+                    {
+                        userLikedDocument.Own.Add(exerciseName);
+                    }
+                }
+
+                var filter = Builders<LikedExercisesDocument>.Filter.Eq(x => x.UserId, userId);
+                await _trainingLikesCollection.ReplaceOneAsync(filter, userLikedDocument);
+
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Success", Success = true };
+
+            }
+            catch(Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An interna server error occured {ex.Message}", Success = false };
+            }
+        }
     }
 }
