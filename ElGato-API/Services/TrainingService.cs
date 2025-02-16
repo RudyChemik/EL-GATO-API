@@ -725,5 +725,48 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An interna server error occured {ex.Message}", Success = false };
             }
         }
+
+        public async Task<BasicErrorResponse> UpdateExerciseSeries(string userId, UpdateExerciseSeriesVM model)
+        {
+            try
+            {
+                var userDailyTrainingDoc = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userDailyTrainingDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training doc not found. couldnt perform update action.", Success = false }; }
+
+                var targetedDay = userDailyTrainingDoc.Trainings.FirstOrDefault(a => a.Date == model.Date);
+                if (targetedDay == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Couldnt find training day for a user for given date.", Success = false }; }
+
+                var targetedExercise = targetedDay.Exercises.FirstOrDefault(a => a.PublicId == model.ExercisePublicId);
+                if (targetedExercise == null) { return new BasicErrorResponse { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "Couldnt find any exercises with given publicId to perform update on." }; }
+
+                foreach (var serieToUpdate in model.SeriesToUpdate)
+                {
+                    var targetedSerie = targetedExercise.Series.FirstOrDefault(a => a.PublicId == serieToUpdate.SerieId);
+                    if (targetedSerie != null)
+                    {
+                        targetedSerie.Repetitions = serieToUpdate.NewRepetitions;
+                        targetedSerie.Tempo = serieToUpdate.newTempo;
+
+                        if (serieToUpdate.NewWeightLbs == 0)
+                        {
+                            targetedSerie.WeightKg = serieToUpdate.NewWeightKg;
+                            targetedSerie.WeightLbs = (serieToUpdate.NewWeightKg * 2.20462);
+                        }
+                        else
+                        {
+                            targetedSerie.WeightKg = (serieToUpdate.NewWeightLbs / 2.20462);
+                            targetedSerie.WeightLbs = serieToUpdate.NewWeightLbs;
+                        }
+                    }
+                }
+
+                await _trainingCollection.ReplaceOneAsync(doc => doc.Id == userDailyTrainingDoc.Id, userDailyTrainingDoc);
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Successs" };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false };
+            }
+        }
     }
 }
