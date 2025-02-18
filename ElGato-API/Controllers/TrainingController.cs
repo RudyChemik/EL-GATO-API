@@ -110,6 +110,75 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(SavedTrainingsVMO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetSavedTrainings()
+        {
+            try
+            {
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _trainingService.GetSavedTrainings(userId);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res.error.ErrorMessage),
+                        _ => BadRequest(res)
+                    }; 
+                }
+
+                return Ok(res.data);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> SaveTraining([FromBody] SaveTrainingVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _trainingService.SaveTraining(userId, model);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res.ErrorMessage),
+                        ErrorCodes.Failed => StatusCode(500, res.ErrorMessage),
+                        _ => BadRequest(res.ErrorMessage)
+                    };
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}" });
+            }
+        }
+
         [HttpPost]
         [Authorize(Policy = "user")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -459,6 +528,48 @@ namespace ElGato_API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false });
+            }
+        }
+
+        [HttpDelete]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+
+        public async Task<IActionResult> RemoveTrainingsFromSaved([FromBody] RemoveSavedTrainingsVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _trainingService.RemoveTrainingsFromSaved(userId, model);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res.ErrorMessage),
+                        ErrorCodes.Internal => StatusCode(500, res.ErrorMessage),
+                        _ => BadRequest(res.ErrorMessage),
+                    };
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, Success = false, ErrorMessage = $"An internal server error occured {ex.Message}" });             
             }
         }
 

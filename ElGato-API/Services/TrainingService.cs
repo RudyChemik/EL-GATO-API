@@ -22,12 +22,14 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<TrainingHistoryDocument> _trainingHistoryCollection;
         private readonly IMongoCollection<LikedExercisesDocument> _trainingLikesCollection;
         private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
+        private readonly IMongoCollection<SavedTrainingsDocument> _savedTrainingsCollection;
         public TrainingService(IMongoDatabase database, AppDbContext context) 
         {
             _trainingCollection = database.GetCollection<DailyTrainingDocument>("DailyTraining");
             _trainingHistoryCollection = database.GetCollection<TrainingHistoryDocument>("TrainingHistory");
             _trainingLikesCollection = database.GetCollection<LikedExercisesDocument>("LikedExercises");
             _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
+            _savedTrainingsCollection = database.GetCollection<SavedTrainingsDocument>("SavedTrainings");
             _context = context;
         }
 
@@ -159,6 +161,91 @@ namespace ElGato_API.Services
             catch(Exception ex)
             {
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<(BasicErrorResponse error, SavedTrainingsVMO? data)> GetSavedTrainings(string userId)
+        {
+            try
+            {
+                var userSavedTrainingDoc = await _savedTrainingsCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if (userSavedTrainingDoc == null)
+                {
+                    SavedTrainingsDocument newDoc = new SavedTrainingsDocument()
+                    {
+                        UserId = userId,
+                        SavedTrainings = new List<SavedTrainings>()
+                    };
+
+                    await _savedTrainingsCollection.InsertOneAsync(newDoc);
+                    SavedTrainingsVMO data = new SavedTrainingsVMO()
+                    {
+                        SavedTrainings = new List<SavedTrainings>(),
+                    };
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true }, data);
+                }
+
+                SavedTrainingsVMO vmoData = new SavedTrainingsVMO()
+                {
+                    SavedTrainings = userSavedTrainingDoc.SavedTrainings,
+                };
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "sucess", Success = true }, vmoData);
+            }
+            catch(Exception ex)
+            {
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<BasicErrorResponse> SaveTraining(string userId, SaveTrainingVM model)
+        {
+            try
+            {
+                var userSavedTrainingDoc = await _savedTrainingsCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userSavedTrainingDoc == null)
+                {
+                    List<SavedExercises> exercises = new List<SavedExercises>();
+                    int idCounter = 0;
+                    foreach(var name in model.ExerciseNames)
+                    {
+                        exercises.Add(new SavedExercises() { Name = name, PublicId = idCounter});
+                        idCounter++;
+                    }
+
+                    SavedTrainingsDocument newDoc = new SavedTrainingsDocument()
+                    {
+                        UserId = userId,
+                        SavedTrainings = new List<SavedTrainings>() { new SavedTrainings() { Name = model.Name, Exercises = exercises, PublicId = 0 } }
+                    };
+
+                    await _savedTrainingsCollection.InsertOneAsync(newDoc);
+                    return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucesss" };
+                }
+
+                int newId = (userSavedTrainingDoc.SavedTrainings.Any()) ? userSavedTrainingDoc.SavedTrainings.Max(a => a.PublicId) + 1 : 0;
+                List<SavedExercises> exercisesList = new List<SavedExercises>();
+                int counter = 0;
+
+                foreach (var name in model.ExerciseNames)
+                {
+                    exercisesList.Add(new SavedExercises() { Name = name, PublicId = counter });
+                    counter++;
+                }
+
+                userSavedTrainingDoc.SavedTrainings.Add(new SavedTrainings() { Name = model.Name, Exercises = exercisesList, PublicId = newId});
+                var updateRes = await _savedTrainingsCollection.ReplaceOneAsync(a => a.UserId == userId, userSavedTrainingDoc);
+
+                if (updateRes.ModifiedCount == 0)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Failed to update sacved training data" };
+                }
+
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Success" };
+            }
+            catch(Exception ex)
+            {
+                return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Error occured: {ex.Message}", ErrorCode = ErrorCodes.Internal } );
             }
         }
 
@@ -766,6 +853,34 @@ namespace ElGato_API.Services
             catch (Exception ex)
             {
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false };
+            }
+        }
+
+        public async Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model)
+        {
+            try
+            {
+                var userDocument = await _savedTrainingsCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userDocument == null)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "User saved training document not found." };
+                }
+
+                foreach (var toRemoveId in model.SavedTrainingIdsToRemove)
+                {
+                    var target = userDocument.SavedTrainings.FirstOrDefault(a=>a.PublicId == toRemoveId);
+                    if(target != null)
+                    {
+                        userDocument.SavedTrainings.Remove(target);
+                    }
+                }
+
+                await _savedTrainingsCollection.ReplaceOneAsync(doc => doc.Id == userDocument.Id, userDocument);
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucessfully removed trainings" };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false };
             }
         }
     }

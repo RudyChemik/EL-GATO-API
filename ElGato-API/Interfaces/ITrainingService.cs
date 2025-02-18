@@ -10,6 +10,8 @@ namespace ElGato_API.Interfaces
         Task<(BasicErrorResponse error, List<ExerciseVMO>? data)> GetAllExercises();
         Task<(BasicErrorResponse error, List<LikedExercisesVMO>? data)> GetAllLikedExercises(string userId);
         Task<(BasicErrorResponse error, TrainingDayVMO? data)> GetUserTrainingDay(string userId, DateTime date);
+        Task<(BasicErrorResponse error, SavedTrainingsVMO? data)> GetSavedTrainings(string userId);
+        Task<BasicErrorResponse> SaveTraining(string userId, SaveTrainingVM model);
         Task<BasicErrorResponse> AddExercisesToTrainingDay(string userId, AddExerciseToTrainingVM model);
         Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model);
         Task<BasicErrorResponse> RemoveExercisesFromLiked(string userId, List<LikeExerciseVM> model);
@@ -19,5 +21,6 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> RemoveExerciseFromTrainingDay(string userId, RemoveExerciseFromTrainingDayVM model);
         Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName);
         Task<BasicErrorResponse> UpdateExerciseSeries(string userId, UpdateExerciseSeriesVM model);
+        Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model);
     }
 }
