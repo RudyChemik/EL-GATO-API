@@ -856,6 +856,27 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> UpdateSavedTrainingName(string userId, UpdateSavedTrainingName model)
+        {
+            try
+            {
+                var userSavedTrainingsDoc = await _savedTrainingsCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if(userSavedTrainingsDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "document not found." }; }
+           
+                var targetedTraining = userSavedTrainingsDoc.SavedTrainings.FirstOrDefault(a=>a.PublicId == model.PublicId);
+                if(targetedTraining == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = $"Training with given publicId {model.PublicId} does not exist" }; }
+
+                targetedTraining.Name = model.NewName;
+                await _savedTrainingsCollection.ReplaceOneAsync(doc => doc.Id == userSavedTrainingsDoc.Id, userSavedTrainingsDoc);
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Successs" };
+
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"error occured {ex.Message}", Success = false };
+            }
+        }
+
         public async Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model)
         {
             try
@@ -883,5 +904,6 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false };
             }
         }
+
     }
 }
