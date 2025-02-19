@@ -23,5 +23,6 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> UpdateExerciseSeries(string userId, UpdateExerciseSeriesVM model);
         Task<BasicErrorResponse> UpdateSavedTrainingName(string userId, UpdateSavedTrainingName model);
         Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model);
+        Task<BasicErrorResponse> RemoveExercisesFromSavedTraining(string userId, DeleteExercisesFromSavedTrainingVM model);
     }
 }

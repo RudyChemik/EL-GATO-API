@@ -905,5 +905,34 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> RemoveExercisesFromSavedTraining(string userId, DeleteExercisesFromSavedTrainingVM model)
+        {
+            try
+            {
+                var filter = Builders<SavedTrainingsDocument>.Filter.And(
+                    Builders<SavedTrainingsDocument>.Filter.Eq(doc => doc.UserId, userId),
+                    Builders<SavedTrainingsDocument>.Filter.ElemMatch(
+                        doc => doc.SavedTrainings, t => t.PublicId == model.SavedTrainingPublicId)
+                );
+
+                var arrayFilter = new UpdateDefinitionBuilder<SavedTrainingsDocument>()
+                    .PullFilter("SavedTrainings.$.Exercises", Builders<SavedExercises>.Filter.In(e => e.PublicId, model.ExercisesPublicIdToRemove));
+
+                var result = await _savedTrainingsCollection.UpdateOneAsync(filter, arrayFilter);
+
+                if (result.MatchedCount == 0)
+                {
+                    return new BasicErrorResponse(){ ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Saved training with publicId {model.SavedTrainingPublicId} not found", Success = false };
+                }
+
+                return new BasicErrorResponse(){ Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Successfully removed exercises" };
+            }
+            catch (Exception ex)
+            {
+                return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occurred: {ex.Message}", Success = false };
+            }
+        }
+
+
     }
 }

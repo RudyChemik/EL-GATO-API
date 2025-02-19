@@ -578,7 +578,6 @@ namespace ElGato_API.Controllers
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
-
         public async Task<IActionResult> RemoveTrainingsFromSaved([FromBody] RemoveSavedTrainingsVM model)
         {
             try
@@ -611,6 +610,50 @@ namespace ElGato_API.Controllers
             catch(Exception ex)
             {
                 return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, Success = false, ErrorMessage = $"An internal server error occured {ex.Message}" });             
+            }
+        }
+
+        [HttpDelete]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RemoveExercisesFromSavedTraining([FromBody] List<DeleteExercisesFromSavedTrainingVM> model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        Success = false,
+                        ErrorMessage = "Modal state not valid",
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                    });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+
+                var deleteTasks = model.Select(m => _trainingService.RemoveExercisesFromSavedTraining(userId, m));
+                var res = await Task.WhenAll(deleteTasks);
+
+                var failed = res.Where(r => !r.Success).ToList();
+                if (failed.Any())
+                {
+                    var firstError = failed.First();
+                    return firstError.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(firstError),
+                        ErrorCodes.Internal => StatusCode(500, firstError),
+                        _ => BadRequest(firstError),
+                    };
+                }
+
+                return Ok();
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}" });
             }
         }
 
