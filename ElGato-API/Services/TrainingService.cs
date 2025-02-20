@@ -570,6 +570,52 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> AddSavedTrainingToTrainingDay(string userId, AddSavedTrainingToTrainingDayVM model)
+        {
+            try
+            {
+                var filter = Builders<SavedTrainingsDocument>.Filter.Eq(doc => doc.UserId, userId) &
+                     Builders<SavedTrainingsDocument>.Filter.ElemMatch(doc => doc.SavedTrainings, st => st.PublicId == model.SavedTrainingId);
+
+                var userSavedTrainings = await _savedTrainingsCollection.Find(filter).FirstOrDefaultAsync();
+                if (userSavedTrainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Couldnt find training with given id for the user." }; }
+
+                var targetTraining = userSavedTrainings.SavedTrainings.FirstOrDefault(a => a.PublicId == model.SavedTrainingId);
+                if (targetTraining == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"user does not have saved training with given id {model.SavedTrainingId}", Success = false }; }
+
+                var userTrainingDocument = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userTrainingDocument == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." }; }
+
+                var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
+                if (targetedPlan == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "couldn''y find any matching dates in training document, proces terminated" }; }
+
+                int lastPublicId = 0;
+                lastPublicId = (targetedPlan.Exercises.Max(a => a.PublicId) + 1);
+
+                foreach (var ex in targetTraining.Exercises)
+                {
+                    DailyExercise newRecord = new DailyExercise()
+                    {
+                        Name = ex.Name,
+                        IsLiked = false,
+                        PublicId = lastPublicId,
+                        Series = new List<ExerciseSeries>() { new ExerciseSeries() { PublicId = 1, Repetitions = 0, WeightKg = 0, WeightLbs = 0 } }
+                    };
+
+                    targetedPlan.Exercises.Add(newRecord);
+                    lastPublicId++;
+                }
+
+
+                await _trainingCollection.ReplaceOneAsync(a => a.UserId == userId, userTrainingDocument);
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess" };
+            }
+            catch(Exception ex)
+            {
+                return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occurred: {ex.Message}" };
+            }
+        }
+
         public async Task<BasicErrorResponse> UpdateExerciseHistory(string userId, HistoryUpdateVM model, DateTime date)
         {
             try
@@ -932,7 +978,6 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occurred: {ex.Message}", Success = false };
             }
         }
-
-
+       
     }
 }
