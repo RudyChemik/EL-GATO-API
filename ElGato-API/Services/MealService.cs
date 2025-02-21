@@ -20,9 +20,10 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<MealLikesDocument> _mealLikesCollection;
         private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
         private readonly IAchievmentService _achievmentService;
+        private readonly IHelperService _helperService;
         private readonly ILogger<MealService> _logger;
 
-        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory, IAchievmentService achievmentService, ILogger<MealService> logger)
+        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory, IAchievmentService achievmentService, ILogger<MealService> logger, IHelperService helperService)
         {
             _mealsCollection = database.GetCollection<MealsDocument>("MealsDoc");
             _mealLikesCollection = database.GetCollection<MealLikesDocument>("MealsLikeDoc");
@@ -30,6 +31,7 @@ namespace ElGato_API.Services
             _contextFactory = contextFactory;
             _achievmentService = achievmentService;
             _logger = logger;
+            _helperService = helperService;
         }
 
         public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(string userId, List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
@@ -496,7 +498,14 @@ namespace ElGato_API.Services
                 if (mealDoc == null)
                 {
                     _logger.LogWarning($"Meal not found. UserId: {userId} MealId: {mealId} Method: {nameof(SaveMeal)}");
-                    return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _mealsCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    mealDoc = newDoc;
                 }
 
                 int saveCounter = mealDoc.SavedCounter;
@@ -679,7 +688,14 @@ namespace ElGato_API.Services
                 if (doc == null)
                 {
                     _logger.LogWarning($"User liked meals doc not found. UserId: {userId} Method: {nameof(GetUserLikedMeals)}");
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document not found.", ErrorCode = ErrorCodes.NotFound }, res);
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _mealLikesCollection);
+                    if(newDoc == null)
+                    {
+                        return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document not found.", ErrorCode = ErrorCodes.NotFound }, res);
+                    }
+
+                    doc = newDoc;
                 }
 
                 var likedMealIds = doc.LikedMeals.Select(ObjectId.Parse).ToList();
@@ -746,7 +762,14 @@ namespace ElGato_API.Services
                 if (doc == null)
                 {
                     _logger.LogWarning($"User like document not found. UserId: {userId} Method: {GetUserSavedMeals}");
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null.", ErrorCode = ErrorCodes.NotFound }, res);
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _mealLikesCollection);
+                    if(newDoc == null)
+                    {
+                        return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null.", ErrorCode = ErrorCodes.NotFound }, res);
+                    }
+
+                    doc = newDoc;
                 }
 
                 var savedMealIds = doc.SavedMeals.Select(ObjectId.Parse).ToList();
@@ -1014,7 +1037,14 @@ namespace ElGato_API.Services
                 if (mealDoc == null)
                 {
                     _logger.LogWarning($"Meal not found. UserId: {userId} MealId: {mealId} Method: {nameof(DeleteMeal)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id", ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _mealsCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    mealDoc = newDoc;
                 }
 
                 if (mealDoc.UserId != userId) 

@@ -102,6 +102,7 @@ builder.Services.AddScoped<IAchievmentService, AchievmentService>();
 builder.Services.AddScoped<ITrainingService, TrainingService>();
 
 builder.Services.AddScoped<IScrapService, ScrapService>();
+builder.Services.AddScoped<IHelperService, HelperService>();
 
 //IDENTITY
 builder.Services.AddIdentity<AppUser, IdentityRole>()

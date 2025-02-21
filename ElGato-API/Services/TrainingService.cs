@@ -23,14 +23,16 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<LikedExercisesDocument> _trainingLikesCollection;
         private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
         private readonly IMongoCollection<SavedTrainingsDocument> _savedTrainingsCollection;
+        private readonly IHelperService _helperService;
         private readonly ILogger<TrainingService> _logger;
-        public TrainingService(IMongoDatabase database, AppDbContext context, ILogger<TrainingService> logger) 
+        public TrainingService(IMongoDatabase database, AppDbContext context, ILogger<TrainingService> logger, IHelperService helperService) 
         {
             _trainingCollection = database.GetCollection<DailyTrainingDocument>("DailyTraining");
             _trainingHistoryCollection = database.GetCollection<TrainingHistoryDocument>("TrainingHistory");
             _trainingLikesCollection = database.GetCollection<LikedExercisesDocument>("LikedExercises");
             _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
             _savedTrainingsCollection = database.GetCollection<SavedTrainingsDocument>("SavedTrainings");
+            _helperService = helperService;
             _context = context;
             _logger = logger;
         }
@@ -114,7 +116,18 @@ namespace ElGato_API.Services
             try
             {
                 var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
-                if(userTrainingDocument == null) { _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(GetUserTrainingDay)}"); return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User training document not found", Success = false }, null); }
+                if(userTrainingDocument == null) 
+                { 
+                    _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(GetUserTrainingDay)}");
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
+                    {
+                        return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User training document not found", Success = false }, null);
+                    }
+
+                    userTrainingDocument = newDoc;
+                }
              
                 var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a=>a.Date == date);
                 if(targetedPlan != null)
@@ -262,7 +275,18 @@ namespace ElGato_API.Services
             try
             {
                 var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
-                if (userTrainingDocument == null) { _logger.LogWarning($"User training document not found. UserId: {userId} Method: {nameof(AddExercisesToTrainingDay)}"); return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." }; }
+                if (userTrainingDocument == null) 
+                { 
+                    _logger.LogWarning($"User training document not found. UserId: {userId} Method: {nameof(AddExercisesToTrainingDay)}");
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." };
+                    }
+
+                    userTrainingDocument = newDoc;
+                }
 
                 var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
                 if (targetedPlan == null)
@@ -377,7 +401,18 @@ namespace ElGato_API.Services
             try 
             {
                 var existingDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (existingDoc == null) { _logger.LogWarning($"Liked training document not found. UserId: {userId} Method: {nameof(RemoveExercisesFromLiked)}"); return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User liked exercise document not found.", Success = false }; }
+                if (existingDoc == null) 
+                { 
+                    _logger.LogWarning($"Liked training document not found. UserId: {userId} Method: {nameof(RemoveExercisesFromLiked)}");
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingLikesCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User liked exercise document not found.", Success = false };
+                    }
+
+                    existingDoc = newDoc;
+                }
 
                 foreach (var exercise in model) 
                 {
@@ -505,12 +540,19 @@ namespace ElGato_API.Services
                 if (trainingDocument == null)
                 {
                     _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(WriteSeriesForAnExercise)}");
-                    return new BasicErrorResponse
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
                     {
-                        Success = false,
-                        ErrorMessage = "Training document not found for the given user",
-                        ErrorCode = ErrorCodes.NotFound
-                    };
+                        return new BasicErrorResponse
+                        {
+                            Success = false,
+                            ErrorMessage = "Training document not found for the given user",
+                            ErrorCode = ErrorCodes.NotFound
+                        };
+                    }
+
+                    trainingDocument = newDoc;
                 }
 
                 var trainingIndex = trainingDocument.Trainings.FindIndex(t => t.Date == model.Date);
@@ -597,7 +639,15 @@ namespace ElGato_API.Services
                 if (userSavedTrainings == null)
                 {
                     _logger.LogWarning($"Saved training document not found. UserId: {userId} Method: {nameof(AddSavedTrainingToTrainingDay)}");
-                    return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Couldnt find training with given id for the user." }; 
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _savedTrainingsCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Couldnt find training with given id for the user." };
+
+                    }
+
+                    userSavedTrainings = newDoc;
                 }
 
                 var targetTraining = userSavedTrainings.SavedTrainings.FirstOrDefault(a => a.PublicId == model.SavedTrainingId);
@@ -724,7 +774,14 @@ namespace ElGato_API.Services
                 if (trainingDocument == null) 
                 {
                     _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(RemoveSeriesFromAnExercise)}");
-                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; 
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false };
+                    }
+
+                    trainingDocument = newDoc;
                 }
 
                 if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
@@ -769,7 +826,14 @@ namespace ElGato_API.Services
                 if (trainingDocument == null) 
                 {
                     _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(RemoveExerciseFromTrainingDay)}");
-                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; 
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false };
+                    }
+
+                    trainingDocument = newDoc;
                 }
 
                 if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
@@ -905,7 +969,14 @@ namespace ElGato_API.Services
                 if (userDailyTrainingDoc == null) 
                 {
                     _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(UpdateExerciseSeries)}");
-                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training doc not found. couldnt perform update action.", Success = false }; 
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _trainingCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training doc not found. couldnt perform update action.", Success = false };
+                    }
+
+                    userDailyTrainingDoc = newDoc;
                 }
 
                 var targetedDay = userDailyTrainingDoc.Trainings.FirstOrDefault(a => a.Date == model.Date);
@@ -953,7 +1024,15 @@ namespace ElGato_API.Services
                 if(userSavedTrainingsDoc == null) 
                 {
                     _logger.LogWarning($"Saved trainings document not found. UserId: {userId} Method: {nameof(UpdateSavedTrainingName)}");
-                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "document not found." }; 
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _savedTrainingsCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "document not found." };
+
+                    }
+
+                    userSavedTrainingsDoc = newDoc;
                 }
            
                 var targetedTraining = userSavedTrainingsDoc.SavedTrainings.FirstOrDefault(a=>a.PublicId == model.PublicId);
@@ -979,7 +1058,14 @@ namespace ElGato_API.Services
                 if (userDocument == null)
                 {
                     _logger.LogWarning($"Saved training collection not found. UserId: {userId} Method: {nameof(RemoveTrainingsFromSaved)}");
-                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "User saved training document not found." };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _savedTrainingsCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "User saved training document not found." };
+                    }
+
+                    userDocument = newDoc;
                 }
 
                 foreach (var toRemoveId in model.SavedTrainingIdsToRemove)

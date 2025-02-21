@@ -22,14 +22,16 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
         private readonly IMongoCollection<ProductDocument> _productCollection;
         private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
+        private readonly IHelperService _helperService;
         private readonly ILogger<DietService> _logger;
 
-        public DietService(IMongoDatabase database, ILogger<DietService> logger) 
+        public DietService(IMongoDatabase database, ILogger<DietService> logger, IHelperService helperService) 
         {
             _dietCollection = database.GetCollection<DietDocument>("DailyDiet");
             _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
             _productCollection = database.GetCollection<ProductDocument>("products");
             _ownMealCollection = database.GetCollection<OwnMealsDocument>("OwnMealsDoc");
+            _helperService = helperService;
             _logger = logger;
         }
 
@@ -101,7 +103,13 @@ namespace ElGato_API.Services
                 if (existingDocument == null)
                 {
                     _logger.LogWarning($"User diet document not found UserId: {userId} Method: {nameof(AddIngridientToMeal)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    existingDocument = newDoc;
                 }
 
                 var filter = Builders<DietDocument>.Filter.And(
@@ -161,7 +169,14 @@ namespace ElGato_API.Services
                 if (existingDocument == null)
                 {
                     _logger.LogWarning($"User diet document not found. UserId: {userId}, Method: {nameof(AddIngredientsToMeals)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    existingDocument = newDoc;
                 }
 
                 var filter = Builders<DietDocument>.Filter.And(
@@ -227,7 +242,14 @@ namespace ElGato_API.Services
                 if (existingDocument == null)
                 {
                     _logger.LogWarning($"User diet document not found. UserId: {userId} Method: {nameof(AddWater)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+
+                    if (newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "User doc not found", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    existingDocument = newDoc;
                 }
 
                 var todayPlan = existingDocument.DailyPlans.FirstOrDefault(p => p.Date.Date == date);
@@ -344,11 +366,18 @@ namespace ElGato_API.Services
             try
             {
                 var userOwnMealDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (userOwnMealDoc == null || userOwnMealDoc.SavedIngMeals == null)
+                if (userOwnMealDoc == null)
                 {
                     _logger.LogWarning($"Saved meals document not found for user. UserId: {userId} Method: {nameof(AddMealFromSavedMeals)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage="No savedmeals document for given user or the doc is empty.", ErrorCode = ErrorCodes.NotFound };
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _ownMealCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "Own meals collection doc not found.", ErrorCode = ErrorCodes.NotFound };
+                    }
+                    userOwnMealDoc = newDoc;
                 }
+
+                if(userOwnMealDoc.SavedIngMeals == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Saved ing empty.", Success = false }; }
 
                 var savedMealToAdd = userOwnMealDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == model.Name);
                 if (savedMealToAdd == null) 
@@ -473,11 +502,19 @@ namespace ElGato_API.Services
             try
             {
                 var existingDocument = await _dietCollection.Find(d => d.UserId == userId).FirstOrDefaultAsync();
-                if (existingDocument == null) {
+                if (existingDocument == null) 
+                {
                     _logger.LogWarning($"User diet document not found. UserId: {userId} Method: {nameof(GetUserDoc)}");
-                    errorResponse.ErrorMessage = "document not found";
-                    errorResponse.ErrorCode = ErrorCodes.NotFound;
-                    return (errorResponse, model);
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+                    if(newDoc == null)
+                    {
+                        errorResponse.ErrorMessage = "document not found";
+                        errorResponse.ErrorCode = ErrorCodes.NotFound;
+                        return (errorResponse, model);
+                    }
+
+                    existingDocument = newDoc;
                 }
 
                 foreach (var dailyPlan in existingDocument.DailyPlans) 
@@ -508,9 +545,16 @@ namespace ElGato_API.Services
                 if (existingDocument == null)
                 {
                     _logger.LogWarning($"User diet document not found. UserId: {userId} Method: {nameof(GetUserDietDay)}");
-                    errorResponse.ErrorMessage = "User diet document not found";
-                    errorResponse.ErrorCode = ErrorCodes.NotFound;
-                    return (errorResponse, model);
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+                    if(newDoc == null)
+                    {
+                        errorResponse.ErrorMessage = "User diet document not found";
+                        errorResponse.ErrorCode = ErrorCodes.NotFound;
+                        return (errorResponse, model);
+                    }
+
+                    existingDocument = newDoc;
                 }
 
                 var ownDocumentDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
@@ -663,6 +707,7 @@ namespace ElGato_API.Services
                 if (dietDocument == null)
                 {
                     _logger.LogWarning($"Meal or ingriedient not found while trying to delete. UserId: {userId} Data: {model} Method: {nameof(DeleteIngridientFromMeal)}");
+                    await _helperService.CreateMissingDoc(userId, _dietCollection);
                     return new BasicErrorResponse { ErrorMessage = "Meal or ingredient not found.", Success = false, ErrorCode = ErrorCodes.NotFound };
                 }
 
@@ -729,10 +774,22 @@ namespace ElGato_API.Services
             try
             {
                 var savedMealDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (savedMealDoc == null || savedMealDoc.SavedIngMeals == null)
+                if (savedMealDoc == null)
                 {
                     _logger.LogWarning($"User diet document not found. UserId: {userId} Method: {nameof(RemoveMealFromSaved)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User document with saved meals not found.", ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _ownMealCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "User document with saved meals not found.", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    savedMealDoc = newDoc;
+                }
+
+                if (savedMealDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Document empty." };
                 }
 
                 var mealToRemove = savedMealDoc.SavedIngMeals.Find(a => a.Name == name);
@@ -769,10 +826,22 @@ namespace ElGato_API.Services
             try
             {
                 var ownMealsDoc = await _ownMealCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (ownMealsDoc == null || ownMealsDoc.SavedIngMeals == null)
+                if (ownMealsDoc == null)
                 {
                     _logger.LogWarning($"User meal doc not found for the user. UserId: {userId} Method: {nameof(DeleteMealsFromSaved)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "Saved meals document not found for the user", ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _ownMealCollection);
+                    if (newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "Saved meals document not found for the user", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    ownMealsDoc = newDoc;
+                }
+
+                if(ownMealsDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "saved meals not found.", Success = false };
                 }
 
                 foreach (var mealName in model.SavedMealsNames) 
@@ -863,7 +932,14 @@ namespace ElGato_API.Services
                 if (dietDocument == null)
                 {
                     _logger.LogWarning($"Meal or ingridient not found. UserId: {userId} Data: {model} Method: {nameof(UpdateIngridientWeightValue)}");
-                    return new BasicErrorResponse { ErrorMessage = "Meal or ingridient not found", Success = false, ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dietCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse { ErrorMessage = "Meal or ingridient not found", Success = false, ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    dietDocument = newDoc;
                 }
 
                 var dailyPlan = dietDocument.DailyPlans.FirstOrDefault(dp => dp.Date == model.Date.Date);
@@ -919,10 +995,22 @@ namespace ElGato_API.Services
             try
             {
                 var ownMealDoc = await _ownMealCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
-                if (ownMealDoc == null || ownMealDoc.SavedIngMeals == null)
+                if (ownMealDoc == null)
                 {
                     _logger.LogWarning($"Saved meal document not found. UserId: {userId} Method: {nameof(UpdateSavedMealIngridientWeight)}");
-                    return new BasicErrorResponse() { Success = false, ErrorMessage = "User saved meal document does not exist.", ErrorCode = ErrorCodes.NotFound };
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _ownMealCollection);
+                    if(newDoc == null)
+                    {
+                        return new BasicErrorResponse() { Success = false, ErrorMessage = "User saved meal document does not exist.", ErrorCode = ErrorCodes.NotFound };
+                    }
+
+                    ownMealDoc = newDoc;
+                }
+
+                if (ownMealDoc.SavedIngMeals == null)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "saved ing meals not found?" };
                 }
 
                 var mealToUpdate = ownMealDoc.SavedIngMeals.FirstOrDefault(a=>a.Name == model.MealName);
