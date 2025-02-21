@@ -20,14 +20,16 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<MealLikesDocument> _mealLikesCollection;
         private readonly IMongoCollection<OwnMealsDocument> _ownMealCollection;
         private readonly IAchievmentService _achievmentService;
+        private readonly ILogger<MealService> _logger;
 
-        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory, IAchievmentService achievmentService)
+        public MealService(IMongoDatabase database, IDbContextFactory<AppDbContext> contextFactory, IAchievmentService achievmentService, ILogger<MealService> logger)
         {
             _mealsCollection = database.GetCollection<MealsDocument>("MealsDoc");
             _mealLikesCollection = database.GetCollection<MealLikesDocument>("MealsLikeDoc");
             _ownMealCollection = database.GetCollection<OwnMealsDocument>("OwnMealsDoc");
             _contextFactory = contextFactory;
             _achievmentService = achievmentService;
+            _logger = logger;
         }
 
         public async Task<(List<SimpleMealVMO> res, BasicErrorResponse error)> GetByMainCategory(string userId, List<string> LikedMeals, List<string> SavedMeals, string? category, int? qty = 5, int? pageNumber = 1)
@@ -100,6 +102,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get data by main category. Method: {nameof(GetByMainCategory)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
@@ -185,6 +188,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get meal data by makro. Method: {nameof(GetByHighMakro)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
@@ -270,6 +274,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get meal data by makro. Method: {nameof(GetByLowMakro)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" , ErrorCode = ErrorCodes.Internal });
             }
         }
@@ -328,6 +333,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get data by liked nm. Method: {nameof(GetMostLiked)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
@@ -383,6 +389,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get random data. Method: {nameof(GetRandom)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal });
             }
         }
@@ -402,10 +409,12 @@ namespace ElGato_API.Services
                     return (res, new BasicErrorResponse() { Success = true });
                 }
 
+                _logger.LogWarning($"User liked-meals document not found. UserId: {userId} Method: {nameof(GetUserMealLikeDoc)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = "User Likes doc not found,," });
             }
             catch (Exception ex) 
             {
+                _logger.LogError($"Failed while trying to get user liked-meals doc. UserId: {userId} Method: {nameof(GetUserMealLikeDoc)}");
                 return (res, new BasicErrorResponse() { Success = false, ErrorMessage = $"Internal server error {ex.Message}" });
             }
         }
@@ -423,6 +432,7 @@ namespace ElGato_API.Services
 
                 if (mealDoc == null)
                 {
+                    _logger.LogWarning($"meal not found. UserId: {userId} Method: {nameof(LikeMeal)}");
                     return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
                 }
 
@@ -467,6 +477,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to like meal. UserId: {userId} MealId: {mealId} Method: {nameof(LikeMeal)}");
                 return new BasicErrorResponse { Success = false, ErrorMessage = $"Internal server error {ex.Message}", ErrorCode = ErrorCodes.Internal};
             }
         }
@@ -484,6 +495,7 @@ namespace ElGato_API.Services
 
                 if (mealDoc == null)
                 {
+                    _logger.LogWarning($"Meal not found. UserId: {userId} MealId: {mealId} Method: {nameof(SaveMeal)}");
                     return new BasicErrorResponse { Success = false, ErrorMessage = "Meal not found", ErrorCode = ErrorCodes.NotFound };
                 }
 
@@ -527,6 +539,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed while trying to save meal. UserId: {userId} MealId: {mealId} Method: {nameof(SaveMeal)}");
                 return new BasicErrorResponse { Success = false, ErrorMessage = $"Interna lserver error {ex.Message}", ErrorCode = ErrorCodes.Internal };
             }
         }
@@ -648,6 +661,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Faile while trying to perform meal search. Data: {model} Method: {nameof(Search)}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"error: {ex.Message}", ErrorCode = ErrorCodes.Internal }, res);
             }
         }
@@ -664,7 +678,8 @@ namespace ElGato_API.Services
                 var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
                 if (doc == null)
                 {
-                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document null.", ErrorCode = ErrorCodes.NotFound }, res);
+                    _logger.LogWarning($"User liked meals doc not found. UserId: {userId} Method: {nameof(GetUserLikedMeals)}");
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = "User likes document not found.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
                 var likedMealIds = doc.LikedMeals.Select(ObjectId.Parse).ToList();
@@ -714,6 +729,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get user liked meals. UserId: {userId} Method: {nameof(GetUserLikedMeals)}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}", ErrorCode= ErrorCodes.Internal }, res);
             }
         }
@@ -729,6 +745,7 @@ namespace ElGato_API.Services
                 var doc = await _mealLikesCollection.Find(filter).FirstOrDefaultAsync();
                 if (doc == null)
                 {
+                    _logger.LogWarning($"User like document not found. UserId: {userId} Method: {GetUserSavedMeals}");
                     return (new BasicErrorResponse() { Success = false, ErrorMessage = "User saved document is null.", ErrorCode = ErrorCodes.NotFound }, res);
                 }
 
@@ -779,6 +796,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get user saved meals. UserId: {userId} Method: {GetUserSavedMeals}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}", ErrorCode = ErrorCodes.Internal }, res);
             }
         }
@@ -854,7 +872,11 @@ namespace ElGato_API.Services
                 }
 
                 var currentAchievmentCounter = await _achievmentService.GetCurrentAchivmentIdFromFamily("COOK", userId);
-                if (!currentAchievmentCounter.error.Success) { return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong while trying to get current achievment. {currentAchievmentCounter.error.ErrorMessage}", ErrorCode = ErrorCodes.Failed }, null); }
+                if (!currentAchievmentCounter.error.Success) 
+                {
+                    _logger.LogError($"Failed while trying to get achievment. UserId: {userId} Data: {model} Method: {nameof(ProcessAndPublishMeal)}");
+                    return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Something went wrong while trying to get current achievment. {currentAchievmentCounter.error.ErrorMessage}", ErrorCode = ErrorCodes.Failed }, null); 
+                }
 
                 if (!string.IsNullOrEmpty(currentAchievmentCounter.achievmentName))
                 {
@@ -869,6 +891,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to publish meal. UserId: {userId} Data: {model} Method: {nameof(ProcessAndPublishMeal)}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal }, null);
             }
         }
@@ -895,6 +918,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"couldn't parse. Method: {nameof(ConvertUserTimeToInt)}");
                 throw new Exception("Couldn't handle parsing user time brackets.", ex);
             }
         }
@@ -977,6 +1001,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to GetOwnMeals. UserId: {userId} Method: {nameof(GetOwnMeals)}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal }, null);
             }
         }
@@ -988,11 +1013,13 @@ namespace ElGato_API.Services
                 var mealDoc = await _mealsCollection.Find(r => r.Id == mealId).FirstOrDefaultAsync();
                 if (mealDoc == null)
                 {
+                    _logger.LogWarning($"Meal not found. UserId: {userId} MealId: {mealId} Method: {nameof(DeleteMeal)}");
                     return new BasicErrorResponse() { Success = false, ErrorMessage = "Couldn't find meal with given id", ErrorCode = ErrorCodes.NotFound };
                 }
 
                 if (mealDoc.UserId != userId) 
                 {
+                    _logger.LogInformation($"User {userId} tried to delete someone else's meal. Method: {nameof(DeleteMeal)}");
                     return new BasicErrorResponse() { Success = false, ErrorMessage = "Permission denied. Given meal is not created by the user.", ErrorCode = ErrorCodes.Forbidden };
                 }
 
@@ -1004,11 +1031,13 @@ namespace ElGato_API.Services
                 }
                 else
                 {
+                    _logger.LogError($"Mongo update failed while trying to delete meal. UserId: {userId} MealId: {mealId} Method: {nameof(DeleteMeal)}");
                     return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to delete the meal", ErrorCode = ErrorCodes.Failed };
                 }
             }
             catch (Exception ex) 
-            { 
+            {
+                _logger.LogError(ex, $"Failed while trying to delete meal. UserId: {userId} MealId: {mealId} Method: {nameof(DeleteMeal)}");
                 return new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message, ErrorCode = ErrorCodes.Internal };
             }
         }

@@ -10,10 +10,12 @@ namespace ElGato_API.Services
     public class AchievmentService : IAchievmentService
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<AchievmentService> _logger;
 
-        public AchievmentService(AppDbContext context) 
+        public AchievmentService(AppDbContext context, ILogger<AchievmentService> logger) 
         { 
             _context = context;
+            _logger = logger;
         }
 
         public async Task<(BasicErrorResponse error, string? achievmentName)> GetCurrentAchivmentIdFromFamily(string achievmentFamily, string userId)
@@ -24,6 +26,7 @@ namespace ElGato_API.Services
 
                 if (user == null)
                 {
+                    _logger.LogWarning($"User not found while trying inside GetCurrentAchivmentIdFromFamily, for user {userId}");
                     return (new BasicErrorResponse { Success = false, ErrorMessage = "User not found" }, null);
                 }
 
@@ -61,6 +64,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "GetCurrentAchivmentIdFromFamily internal error");
                 return (new BasicErrorResponse { Success = false, ErrorMessage = $"Something went wrong: {ex.Message}" }, null);
             }
         }
@@ -73,7 +77,7 @@ namespace ElGato_API.Services
                 AchievmentResponse achRes = new AchievmentResponse();
 
                 var achievment = await _context.Achievment.FirstOrDefaultAsync(a => a.StringId == achievmentStringId);
-                if (achievment == null) { return (new BasicErrorResponse() { Success = false, ErrorMessage = "Given achievments does not exists." }, null); }
+                if (achievment == null) { _logger.LogWarning($"User {userId} attempted to access non-existent achievement {achievmentStringId}"); return (new BasicErrorResponse() { Success = false, ErrorMessage = "Given achievments does not exists." }, null); }
 
                 var userCount = await _context.AchievmentCounters.FirstOrDefaultAsync(a => a.UserId == userId && a.AchievmentId == achievment.Id);
                 if (userCount == null)
@@ -142,7 +146,8 @@ namespace ElGato_API.Services
 
             }
             catch (Exception ex) 
-            { 
+            {
+                _logger.LogError(ex, $"Failed to increment achievment progress. -- IncrementAchievmentProgress");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = ex.Message }, null);
             }
         }

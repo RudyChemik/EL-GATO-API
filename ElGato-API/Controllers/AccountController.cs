@@ -113,7 +113,12 @@ namespace ElGato_API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginVM loginVM)
         {
             if (!ModelState.IsValid)
-                return StatusCode(400, "Invalid form send");
+                return StatusCode(400, new BasicErrorResponse()
+                {
+                    ErrorCode = ErrorCodes.ModelStateNotValid,
+                    ErrorMessage = "Invalid model state send.",
+                    Success = false
+                });
 
             try
             {

@@ -9,9 +9,11 @@ namespace ElGato_API.Services
     public class UserRequestService : IUserRequestService
     {
         private readonly AppDbContext _context;
-        public UserRequestService(AppDbContext context) 
+        private readonly ILogger<UserRequestService> _logger;
+        public UserRequestService(AppDbContext context, ILogger<UserRequestService> logger) 
         { 
             _context = context;
+            _logger = logger;
         }
         public async Task<BasicErrorResponse> RequestAddIngredient(string userId, AddProductRequestVM model)
         {
@@ -36,6 +38,7 @@ namespace ElGato_API.Services
 
             }catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to request ingridient addition. UserId: {userId} Data: {model} Method: {nameof(RequestAddIngredient)}");
                 return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull. {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         }
@@ -58,6 +61,7 @@ namespace ElGato_API.Services
                 return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucesfully created report request" };
             }
             catch (Exception ex) {
+                _logger.LogError(ex, $"Failed while trying to report ingredient. UserId: {userId} Data: {model} Method: {nameof(RequestReportIngredient)}");
                 return new BasicErrorResponse() { ErrorMessage = $"Request not succesfull {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         
@@ -82,6 +86,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed while trying to report meal. UserId: {userId} Data: {model} Method: {nameof(RequestReportMeal)}");
                 return new BasicErrorResponse() { ErrorMessage = $"Request not succedull, internal error {ex.Message}", Success = false, ErrorCode = ErrorCodes.Internal };
             }
         }

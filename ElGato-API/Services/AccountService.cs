@@ -8,6 +8,7 @@ using ElGato_API.VMO.Diet;
 using ElGato_API.VMO.UserAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -21,23 +22,33 @@ namespace ElGato_API.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly IJwtService _jwtService;
+        private readonly ILogger<AccountService> _logger;
 
-        public AccountService(AppDbContext context, UserManager<AppUser> userManager, IConfiguration configuration, IJwtService jwtService)
+        public AccountService(AppDbContext context, UserManager<AppUser> userManager, IConfiguration configuration, IJwtService jwtService, ILogger<AccountService> logger)
         {
             _context = context;
             _userManager = userManager;
             _configuration = configuration;
             _jwtService = jwtService;
+            _logger = logger;
         }
 
         public async Task<bool> IsEmailAlreadyUsed(string email)
         {
-            var res = await _context.AppUser.FirstOrDefaultAsync(a=>a.Email == email);
+            try
+            {
+                var res = await _context.AppUser.FirstOrDefaultAsync(a => a.Email == email);
 
-            if (res != null)
-                return true;
+                if (res != null)
+                    return true;
 
-            return false;
+                return false;
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Error occurred while checking if email {email} is already used.");
+                return true;               
+            }
         }
 
         public async Task<LoginVMO> LoginUser(LoginVM loginVM)
@@ -45,16 +56,24 @@ namespace ElGato_API.Services
             var user = await _userManager.FindByEmailAsync(loginVM.Email);
 
             if (user == null)
+            {
+                _logger.LogWarning("Login failed: Email {Email} not found.", loginVM.Email);
                 return CreateFailedLoginResult("E-mail address is invalid");
+            }
 
             var isPasswordValid = await _userManager.CheckPasswordAsync(user, loginVM.Password);
 
             if (!isPasswordValid)
+            {
+                _logger.LogWarning("Login failed: Invalid password for email {Email}.", loginVM.Email);
                 return CreateFailedLoginResult("Password is invalid");
-
+            }
+                
             var userRoles = await _userManager.GetRolesAsync(user);
 
             var token = _jwtService.GenerateJwtToken(user, loginVM.Email, userRoles);
+
+            _logger.LogInformation("User {Email} logged in successfully.", loginVM.Email);
 
             return new LoginVMO
             {
@@ -94,14 +113,19 @@ namespace ElGato_API.Services
 
             if (res.Succeeded)
             {
+                _logger.LogInformation("User with email {Email} registered successfully.", model.Email);
                 await _userManager.AddToRoleAsync(user, "user");
+            }
+            else
+            {
+                var errors = string.Join(", ", res.Errors.Select(e => e.Description));
+                _logger.LogWarning("User registration failed for email {Email}. Errors: {Errors}", model.Email, errors);
             }
 
             return res;
         }
 
-
-        //privets
+        //priv
         private LoginVMO CreateFailedLoginResult(string errorMessage)
         {
             return new LoginVMO

@@ -9,9 +9,11 @@ namespace ElGato_API.Services
     public class UserService : IUserService
     {
         private readonly AppDbContext _dbContext;
-        public UserService(AppDbContext dbContext) 
+        private readonly ILogger<UserService> _logger;
+        public UserService(AppDbContext dbContext, ILogger<UserService> logger) 
         { 
             _dbContext = dbContext;
+            _logger = logger;
         }
 
         public async Task<(BasicErrorResponse error, string? data)> GetSystem(string userId)
@@ -28,6 +30,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed while trying to get system. UserId: {userId} Method: {nameof(GetSystem)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"something went wrong, {ex.Message} ", Success = false}, null);
             }            
         }
@@ -57,7 +60,8 @@ namespace ElGato_API.Services
                 return (error, userCalorieIntake);
             }
             catch (Exception ex) 
-            { 
+            {
+                _logger.LogError(ex, $"Failed while trying to get user calories intake. UserId: {userId} Method: {nameof(GetUserCalories)}");
                 error.ErrorMessage = ex.Message;
                 error.ErrorCode = ErrorCodes.Internal;
                 return (error, userCalorieIntake);

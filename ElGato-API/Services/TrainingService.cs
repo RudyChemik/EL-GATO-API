@@ -23,7 +23,8 @@ namespace ElGato_API.Services
         private readonly IMongoCollection<LikedExercisesDocument> _trainingLikesCollection;
         private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
         private readonly IMongoCollection<SavedTrainingsDocument> _savedTrainingsCollection;
-        public TrainingService(IMongoDatabase database, AppDbContext context) 
+        private readonly ILogger<TrainingService> _logger;
+        public TrainingService(IMongoDatabase database, AppDbContext context, ILogger<TrainingService> logger) 
         {
             _trainingCollection = database.GetCollection<DailyTrainingDocument>("DailyTraining");
             _trainingHistoryCollection = database.GetCollection<TrainingHistoryDocument>("TrainingHistory");
@@ -31,6 +32,7 @@ namespace ElGato_API.Services
             _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
             _savedTrainingsCollection = database.GetCollection<SavedTrainingsDocument>("SavedTrainings");
             _context = context;
+            _logger = logger;
         }
 
         public async Task<(BasicErrorResponse error, List<ExerciseVMO>? data)> GetAllExercises()
@@ -63,6 +65,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed to get all exercises. Method: {nameof(GetAllExercises)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal, {ex.Message}", Success = false }, null);
             }
         }
@@ -101,6 +104,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed to get all liked exercises. Method: {nameof(GetAllLikedExercises)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
             }
         }
@@ -110,7 +114,7 @@ namespace ElGato_API.Services
             try
             {
                 var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
-                if(userTrainingDocument == null) { return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User training document not found", Success = false }, null); }
+                if(userTrainingDocument == null) { _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(GetUserTrainingDay)}"); return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User training document not found", Success = false }, null); }
              
                 var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a=>a.Date == date);
                 if(targetedPlan != null)
@@ -160,6 +164,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed to GetUserTrainingDay UserId: {userId} Date: {date} Method: {nameof(GetUserTrainingDay)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Something went wrong, {ex.Message}", Success = false }, null);
             }
         }
@@ -194,6 +199,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to get user saved trainings. UserId: {userId} Method: {nameof(GetSavedTrainings)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
             }
         }
@@ -238,6 +244,7 @@ namespace ElGato_API.Services
 
                 if (updateRes.ModifiedCount == 0)
                 {
+                    _logger.LogError($"Mogo update failed while trying to save training. UserId: {userId} Data: {model} Method: {nameof(SaveTraining)} ");
                     return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Failed to update sacved training data" };
                 }
 
@@ -245,6 +252,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to save training. UserId: {userId} Data: {model} Method: {nameof(SaveTraining)}");
                 return (new BasicErrorResponse() { Success = false, ErrorMessage = $"Error occured: {ex.Message}", ErrorCode = ErrorCodes.Internal } );
             }
         }
@@ -254,11 +262,12 @@ namespace ElGato_API.Services
             try
             {
                 var userTrainingDocument = await _trainingCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
-                if (userTrainingDocument == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." }; }
+                if (userTrainingDocument == null) { _logger.LogWarning($"User training document not found. UserId: {userId} Method: {nameof(AddExercisesToTrainingDay)}"); return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training document not found, couldnt perform any action." }; }
 
                 var targetedPlan = userTrainingDocument.Trainings.FirstOrDefault(a => a.Date == model.Date);
                 if (targetedPlan == null)
                 {
+                    _logger.LogWarning($"Training day not found by date. UserId: {userId} Date: {model.Date} Method: {nameof(AddExercisesToTrainingDay)}");
                     return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "couldn''y find any matching dates in training document, proces terminated" };
                 }
 
@@ -291,6 +300,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while tring to add exercise to training day. UserId: {userId} Data: {model} Method: {nameof(AddExercisesToTrainingDay)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"an error occurec {ex.Message}", Success = false };
             }
         }
@@ -356,6 +366,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex) 
             {
+                _logger.LogError(ex, $"Failed while trying to LikeExercise. UserId: {userId} Data: {model} Method: {nameof(LikeExercise)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
         }
@@ -366,7 +377,7 @@ namespace ElGato_API.Services
             try 
             {
                 var existingDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (existingDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User liked exercise document not found.", Success = false }; }
+                if (existingDoc == null) { _logger.LogWarning($"Liked training document not found. UserId: {userId} Method: {nameof(RemoveExercisesFromLiked)}"); return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User liked exercise document not found.", Success = false }; }
 
                 foreach (var exercise in model) 
                 {
@@ -397,6 +408,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to remove exercise from liked. UserId: {userId} Data: {model} Method: {nameof(RemoveExercisesFromLiked)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
         }
@@ -492,6 +504,7 @@ namespace ElGato_API.Services
                 var trainingDocument = await _trainingCollection.Find(filter).FirstOrDefaultAsync();
                 if (trainingDocument == null)
                 {
+                    _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(WriteSeriesForAnExercise)}");
                     return new BasicErrorResponse
                     {
                         Success = false,
@@ -503,6 +516,7 @@ namespace ElGato_API.Services
                 var trainingIndex = trainingDocument.Trainings.FindIndex(t => t.Date == model.Date);
                 if (trainingIndex == -1)
                 {
+                    _logger.LogWarning($"Training document session not found for given date. UserId: {userId} Date: {model.Date} Method: {nameof(WriteSeriesForAnExercise)}");
                     return new BasicErrorResponse
                     {
                         Success = false,
@@ -545,6 +559,7 @@ namespace ElGato_API.Services
 
                 if (result.ModifiedCount == 0)
                 {
+                    _logger.LogError($"Mongo update failed while trying to add exercises to the session by date. UserId: {userId} Data: {model} Method: {nameof(WriteSeriesForAnExercise)}");
                     return new BasicErrorResponse
                     {
                         Success = false,
@@ -561,6 +576,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while tring to write series to an exercise. UserId: {userId} Data: {model} Method: {nameof(WriteSeriesForAnExercise)}");
                 return new BasicErrorResponse
                 {
                     Success = false,
@@ -578,7 +594,11 @@ namespace ElGato_API.Services
                      Builders<SavedTrainingsDocument>.Filter.ElemMatch(doc => doc.SavedTrainings, st => st.PublicId == model.SavedTrainingId);
 
                 var userSavedTrainings = await _savedTrainingsCollection.Find(filter).FirstOrDefaultAsync();
-                if (userSavedTrainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Couldnt find training with given id for the user." }; }
+                if (userSavedTrainings == null)
+                {
+                    _logger.LogWarning($"Saved training document not found. UserId: {userId} Method: {nameof(AddSavedTrainingToTrainingDay)}");
+                    return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Couldnt find training with given id for the user." }; 
+                }
 
                 var targetTraining = userSavedTrainings.SavedTrainings.FirstOrDefault(a => a.PublicId == model.SavedTrainingId);
                 if (targetTraining == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"user does not have saved training with given id {model.SavedTrainingId}", Success = false }; }
@@ -590,7 +610,10 @@ namespace ElGato_API.Services
                 if (targetedPlan == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = "couldn''y find any matching dates in training document, proces terminated" }; }
 
                 int lastPublicId = 0;
-                lastPublicId = (targetedPlan.Exercises.Max(a => a.PublicId) + 1);
+                if (targetedPlan.Exercises.Any())
+                {
+                    lastPublicId = targetedPlan.Exercises.Max(a => a.PublicId) + 1;
+                }
 
                 foreach (var ex in targetTraining.Exercises)
                 {
@@ -612,6 +635,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to add saved training to training day. UserId: {userId} Data: {model} Method: {nameof(AddSavedTrainingToTrainingDay)}");
                 return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occurred: {ex.Message}" };
             }
         }
@@ -682,6 +706,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to UpdateExerciseHistory. UserId: {userId} Data: {model} Date: {date} Method: {nameof(UpdateExerciseHistory)}");
                 return new BasicErrorResponse
                 {
                     Success = false,
@@ -696,7 +721,11 @@ namespace ElGato_API.Services
             try
             {
                 var trainingDocument = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (trainingDocument == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; }
+                if (trainingDocument == null) 
+                {
+                    _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(RemoveSeriesFromAnExercise)}");
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; 
+                }
 
                 if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
 
@@ -719,6 +748,7 @@ namespace ElGato_API.Services
 
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
+                    _logger.LogError($"Mongo update failed while trying to RemoveSeriesFromAnExercise. UserId: {userId} Data: {model} Method: {nameof(RemoveSeriesFromAnExercise)}");
                     return new BasicErrorResponse() { ErrorCode = ErrorCodes.Failed, ErrorMessage = $"Failed while performing the update", Success = false };
                 }
 
@@ -726,6 +756,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to remove series from an exercise. UserId: {userId} Data: {model} Method: {nameof(RemoveSeriesFromAnExercise)}");
                 return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Internal, ErrorMessage = $"{ex.Message}" };
             }
         }
@@ -735,7 +766,11 @@ namespace ElGato_API.Services
             try
             {
                 var trainingDocument = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (trainingDocument == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; }
+                if (trainingDocument == null) 
+                {
+                    _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(RemoveExerciseFromTrainingDay)}");
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "user training document not found.", Success = false }; 
+                }
 
                 if (trainingDocument.Trainings == null) { return new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.Failed, ErrorMessage = "Could not remove any - daily training doc empty." }; }
 
@@ -750,6 +785,7 @@ namespace ElGato_API.Services
                 var updateResult = await _trainingCollection.ReplaceOneAsync(doc => doc.UserId == userId, trainingDocument);
                 if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
                 {
+                    _logger.LogError($"Mongo update failed while trying to remove exercises from training day. UserId: {userId} Data: {model} Method: {nameof(RemoveExerciseFromTrainingDay)}");
                     return new BasicErrorResponse() { ErrorCode = ErrorCodes.Failed, ErrorMessage = $"Failed while performing the update", Success = false };
                 }
 
@@ -776,6 +812,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while tring to remove exercises from training day. UserId: {userId} Data: {model} Method: {nameof(RemoveExerciseFromTrainingDay)}");
                 return new BasicErrorResponse() { ErrorCode= ErrorCodes.Internal, ErrorMessage = $"Failed {ex.Message}", Success =false };
             }
         }
@@ -855,6 +892,7 @@ namespace ElGato_API.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to update like status. UserId: {userId} ExerciseName: {exerciseName} Method: {nameof(UpdateExerciseLikedStatus)} ");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An interna server error occured {ex.Message}", Success = false };
             }
         }
@@ -864,7 +902,11 @@ namespace ElGato_API.Services
             try
             {
                 var userDailyTrainingDoc = await _trainingCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if (userDailyTrainingDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training doc not found. couldnt perform update action.", Success = false }; }
+                if (userDailyTrainingDoc == null) 
+                {
+                    _logger.LogWarning($"Training document not found. UserId: {userId} Method: {nameof(UpdateExerciseSeries)}");
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily training doc not found. couldnt perform update action.", Success = false }; 
+                }
 
                 var targetedDay = userDailyTrainingDoc.Trainings.FirstOrDefault(a => a.Date == model.Date);
                 if (targetedDay == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Couldnt find training day for a user for given date.", Success = false }; }
@@ -898,6 +940,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to update exercise series. UserId: {userId} Data: {model} Method: {nameof(UpdateExerciseSeries)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured {ex.Message}", Success = false };
             }
         }
@@ -907,7 +950,11 @@ namespace ElGato_API.Services
             try
             {
                 var userSavedTrainingsDoc = await _savedTrainingsCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
-                if(userSavedTrainingsDoc == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "document not found." }; }
+                if(userSavedTrainingsDoc == null) 
+                {
+                    _logger.LogWarning($"Saved trainings document not found. UserId: {userId} Method: {nameof(UpdateSavedTrainingName)}");
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "document not found." }; 
+                }
            
                 var targetedTraining = userSavedTrainingsDoc.SavedTrainings.FirstOrDefault(a=>a.PublicId == model.PublicId);
                 if(targetedTraining == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = $"Training with given publicId {model.PublicId} does not exist" }; }
@@ -919,6 +966,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to update name of saved training. UserId: {userId} Data: {model} Method: {nameof(UpdateSavedTrainingName)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"error occured {ex.Message}", Success = false };
             }
         }
@@ -930,6 +978,7 @@ namespace ElGato_API.Services
                 var userDocument = await _savedTrainingsCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
                 if (userDocument == null)
                 {
+                    _logger.LogWarning($"Saved training collection not found. UserId: {userId} Method: {nameof(RemoveTrainingsFromSaved)}");
                     return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "User saved training document not found." };
                 }
 
@@ -947,6 +996,7 @@ namespace ElGato_API.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Failed while trying to remove training from saved trainings. UserId: {userId} Data: {model} Method: {nameof(RemoveTrainingsFromSaved)}");
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false };
             }
         }
@@ -971,10 +1021,12 @@ namespace ElGato_API.Services
                     return new BasicErrorResponse(){ ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Saved training with publicId {model.SavedTrainingPublicId} not found", Success = false };
                 }
 
+                _logger.LogError($"Mongo update failed while trying to remove exercises from saved training. UserId: {userId} Data: {model} Method: {nameof(RemoveExercisesFromSavedTraining)}");
                 return new BasicErrorResponse(){ Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Successfully removed exercises" };
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Failed while trying to RemoveExercisesFromSavedTraining. UserId: {userId} Data: {model} Method: {nameof(RemoveExercisesFromSavedTraining)}");
                 return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occurred: {ex.Message}", Success = false };
             }
         }
