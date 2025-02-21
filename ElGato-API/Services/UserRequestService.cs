@@ -82,7 +82,7 @@ namespace ElGato_API.Services
                 _context.ReportedMeals.Add(request);
                 await _context.SaveChangesAsync();
 
-                return new BasicErrorResponse() { Success = true, ErrorMessage = "Meal report request sucesfull.", ErrorCode = ErrorCodes.Internal };
+                return new BasicErrorResponse() { Success = true, ErrorMessage = "Meal report request sucesfull.", ErrorCode = ErrorCodes.None };
             }
             catch (Exception ex) 
             {

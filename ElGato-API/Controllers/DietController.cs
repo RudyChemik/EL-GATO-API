@@ -62,7 +62,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse
                 {
                     Success = true,
-                    ErrorMessage = "Meal added successfully"
+                    ErrorMessage = "Meal added successfully",
+                    ErrorCode = ErrorCodes.None,
                 });
 
             }
@@ -109,7 +110,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse
                 {
                     Success = true,
-                    ErrorMessage = "Ingridient added to meal sucesfully."
+                    ErrorMessage = "Ingridient added to meal sucesfully.",
+                    ErrorCode = ErrorCodes.None,
                 });
 
             }
@@ -156,6 +158,7 @@ namespace ElGato_API.Controllers
                 {
                     Success = true,
                     ErrorMessage = "Ingridient added sucesfully.",
+                    ErrorCode = ErrorCodes.None,
                 });
             }
             catch (Exception ex)
@@ -201,7 +204,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse()
                 {
                     Success = true,
-                    ErrorMessage = $"{model.Water} ml of water added sucesfully"
+                    ErrorMessage = $"{model.Water} ml of water added sucesfully",
+                    ErrorCode = ErrorCodes.None
                 });
 
             }
@@ -247,7 +251,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse()
                 {
                     Success = true,
-                    ErrorMessage = $"Meal added sucesfully"
+                    ErrorMessage = $"Meal added sucesfully",
+                    ErrorCode = ErrorCodes.None
                 });
             }
             catch (Exception ex)
@@ -294,6 +299,7 @@ namespace ElGato_API.Controllers
                 {
                     ErrorMessage = "Meal added succesfully.",
                     Success = true,
+                    ErrorCode = ErrorCodes.None
                 });
             }
             catch (Exception ex)
@@ -321,7 +327,7 @@ namespace ElGato_API.Controllers
                     {
                         ErrorCodes.Internal => StatusCode(500, res.errorResponse),
                         ErrorCodes.NotFound => NotFound(res.errorResponse),
-                        _ => BadRequest(res),
+                        _ => BadRequest(res.errorResponse),
                     };
                 }
                     
@@ -462,7 +468,7 @@ namespace ElGato_API.Controllers
 
         [HttpDelete]
         [Authorize(Policy = "user")]
-        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
@@ -540,7 +546,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse()
                 {
                     ErrorMessage = "Ingridient deleted sucesfully",
-                    Success = true                   
+                    Success = true,
+                    ErrorCode = ErrorCodes.None
                 });
 
             }
@@ -577,7 +584,8 @@ namespace ElGato_API.Controllers
                 return Ok(new BasicErrorResponse()
                 {
                     Success = true,
-                    ErrorMessage = "Meal removed sucesfully."
+                    ErrorMessage = "Meal removed sucesfully.",
+                    ErrorCode = ErrorCodes.None
                 });
             }
             catch (Exception ex)
@@ -624,6 +632,7 @@ namespace ElGato_API.Controllers
                 {
                     ErrorMessage = "Meals deleted from saved sucesfully",
                     Success = true,
+                    ErrorCode = ErrorCodes.None
                 });
             }
             catch (Exception ex)
@@ -670,6 +679,7 @@ namespace ElGato_API.Controllers
                 {
                     ErrorMessage = "Sucesfully updated ingridient weight value.",
                     Success = true,
+                    ErrorCode = ErrorCodes.None
                 });
             }
             catch (Exception ex)

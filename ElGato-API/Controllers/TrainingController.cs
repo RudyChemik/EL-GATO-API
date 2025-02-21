@@ -96,9 +96,9 @@ namespace ElGato_API.Controllers
                 {
                     return res.error.ErrorCode switch
                     {
-                        ErrorCodes.NotFound => NotFound(res.error.ErrorMessage),
-                        ErrorCodes.Internal => StatusCode(500, res.error.ErrorMessage),
-                        _ => BadRequest(res)
+                        ErrorCodes.NotFound => NotFound(res.error),
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
                     };
                 }
 
@@ -126,8 +126,8 @@ namespace ElGato_API.Controllers
                 {
                     return res.error.ErrorCode switch
                     {
-                        ErrorCodes.Internal => StatusCode(500, res.error.ErrorMessage),
-                        _ => BadRequest(res)
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
                     }; 
                 }
 
@@ -165,9 +165,9 @@ namespace ElGato_API.Controllers
                 {
                     return res.ErrorCode switch
                     {
-                        ErrorCodes.Internal => StatusCode(500, res.ErrorMessage),
-                        ErrorCodes.Failed => StatusCode(500, res.ErrorMessage),
-                        _ => BadRequest(res.ErrorMessage)
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        ErrorCodes.Failed => StatusCode(500, res),
+                        _ => BadRequest(res)
                     };
                 }
 
@@ -640,9 +640,9 @@ namespace ElGato_API.Controllers
                 {
                     return res.ErrorCode switch
                     {
-                        ErrorCodes.NotFound => NotFound(res.ErrorMessage),
-                        ErrorCodes.Internal => StatusCode(500, res.ErrorMessage),
-                        _ => BadRequest(res.ErrorMessage),
+                        ErrorCodes.NotFound => NotFound(res),
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        _ => BadRequest(res),
                     };
                 }
 

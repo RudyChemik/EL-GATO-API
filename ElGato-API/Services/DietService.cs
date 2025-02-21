@@ -904,7 +904,7 @@ namespace ElGato_API.Services
 
                 if (res.ModifiedCount > 0)
                 {
-                    return new BasicErrorResponse { Success = true, ErrorCode = ErrorCodes.None };
+                    return new BasicErrorResponse { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess" };
                 }
 
                 _logger.LogError($"Mongo update failed. UserId: {userId} Data: {model}, Method: {nameof(UpdateMealName)}");
@@ -1032,7 +1032,7 @@ namespace ElGato_API.Services
                     return new BasicErrorResponse() { Success = false, ErrorMessage = "Failed to update the ingredient weighy", ErrorCode = ErrorCodes.Failed };
                 }
 
-                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None };
+                return new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess" };
 
             }
             catch(Exception ex)

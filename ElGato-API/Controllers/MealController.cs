@@ -339,8 +339,8 @@ namespace ElGato_API.Controllers
                 {
                     return res.error.ErrorCode switch
                     {
-                        ErrorCodes.Internal => StatusCode(500, res),
-                        _ => BadRequest(res)
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
                     };
                 }
 

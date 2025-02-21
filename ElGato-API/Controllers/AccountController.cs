@@ -46,7 +46,14 @@ namespace ElGato_API.Controllers
         public async Task<IActionResult> RegisterWithQuestionary([FromBody]RegisterWithQuestVM registerVM) 
         {
             if (!ModelState.IsValid)
-                return StatusCode(400, "Model state not valid.");
+            {
+                return BadRequest(new BasicErrorResponse()
+                {
+                    ErrorCode = ErrorCodes.ModelStateNotValid,
+                    ErrorMessage = "Model state not valid",
+                    Success = false
+                });
+            }
 
             RegisterVMO registerVMO = new RegisterVMO();
 
