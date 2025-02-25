@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
+using ElGato_API.VM.UserData;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
 using Microsoft.AspNetCore.Authorization;
@@ -80,5 +81,52 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(List<ExercisePastDataVMO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetPastDataForExercises([FromBody]GetPasstExerciseDataVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new BasicErrorResponse()
+                    {
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                        ErrorMessage = "Model state not valid.",
+                        Success = false
+                    });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+
+                var getTasks = model.ExercisesNames.Select(name => _userService.GetPastExerciseData(userId, name));
+                var results = await Task.WhenAll(getTasks);
+
+                var errorResult = results.FirstOrDefault(r => !r.error.Success);
+                if (errorResult.data != null && !errorResult.error.Success)
+                {
+                    return errorResult.error.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(errorResult.error),
+                        ErrorCodes.Internal => StatusCode(500, errorResult.error),
+                        ErrorCodes.ModelStateNotValid => BadRequest(errorResult.error),
+                        _ => BadRequest(errorResult.error)
+                    };
+                }
+
+                List<ExercisePastDataVMO> vmo = results.Select(result => result.data).Where(data => data != null).ToList();
+
+                return Ok(vmo);
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured, ex {ex.Message}", Success = false });
+            }
+        }
     }
 }
