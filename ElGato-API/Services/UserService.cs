@@ -124,7 +124,7 @@ namespace ElGato_API.Services
                     exData.Select(a => new ExercisePastData
                     {
                         Date = a.Date,
-                        Series = a.Series.Select(serie => new ExercisePastSerieData
+                        Series = a.Series.Where(serie => serie.Repetitions != 0).Select(serie => new ExercisePastSerieData
                         {
                             Repetitions = serie.Repetitions,
                             WeightKg = serie.WeightKg,
@@ -132,6 +132,8 @@ namespace ElGato_API.Services
                         }).ToList()
                     })
                 );
+
+                exercisePastDataVMO.PastData.RemoveAll(x => x.Series.Count == 0);
 
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Sucessfully retrived data." }, exercisePastDataVMO);
             }

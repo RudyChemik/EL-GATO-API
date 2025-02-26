@@ -12,5 +12,41 @@ namespace ElGato_API.Models.User
         public CalorieInformation? CalorieInformation { get; set; }
         public List<Achievment>? Achievments { get; set; } = new List<Achievment>();
         public List<AchievmentCounters> AchivmentCounter { get; set; } = new List<AchievmentCounters>();
+
+        public LayoutSettings? LayoutSettings { get; set; } = new LayoutSettings
+        {
+            Animations = true,
+            ChartStack = new List<ChartStack>
+            {
+                new ChartStack
+                {
+                    ChartType = ChartType.Linear,
+                    ChartDataType = ChartDataType.Exercise,
+                    Period = Period.All,
+                    Name = "Benchpress"
+                },
+                new ChartStack
+                {
+                    ChartType = ChartType.Compare,
+                    ChartDataType = ChartDataType.Exercise,
+                    Period = Period.Last,
+                    Name = "Benchpress"
+                },
+                new ChartStack
+                {
+                    ChartType = ChartType.Hexagonal,
+                    ChartDataType = ChartDataType.NotDefined,
+                    Period = Period.Week,
+                    Name = "Muscle engagement"
+                },
+                new ChartStack
+                {
+                    ChartType = ChartType.Bar,
+                    ChartDataType = ChartDataType.Calorie,
+                    Period = Period.Last5,
+                    Name = "Calories"
+                },
+            }
+        };
     }
 }

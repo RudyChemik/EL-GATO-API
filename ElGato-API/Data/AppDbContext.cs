@@ -3,8 +3,10 @@ using ElGato_API.Models.Training;
 using ElGato_API.Models.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using System.Text.Json;
 
 namespace ElGato_API.Data
 {
@@ -46,6 +48,16 @@ namespace ElGato_API.Data
             .HasMany(e => e.MusclesEngaded)
             .WithMany()
             .UsingEntity(j => j.ToTable("ExerciseMuscles"));
+
+            var layoutSettingsConverter = new ValueConverter<LayoutSettings, string>(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                v => JsonSerializer.Deserialize<LayoutSettings>(v, (JsonSerializerOptions)null)
+            );
+
+            modelBuilder.Entity<AppUser>()
+                .Property(u => u.LayoutSettings)
+                .HasConversion(layoutSettingsConverter)
+                .HasColumnType("nvarchar(max)");
 
             base.OnModelCreating(modelBuilder);
         }
