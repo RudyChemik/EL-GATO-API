@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
+using ElGato_API.Models.User;
 using ElGato_API.VM.UserData;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
@@ -83,7 +84,7 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
-        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(UserLayoutVMO), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
@@ -91,7 +92,20 @@ namespace ElGato_API.Controllers
         {
             try
             {
-                return Ok();
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _userService.GetUserLayout(userId);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res.error),
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error),
+                    };
+                }
+
+                return Ok(res.data);
             }
             catch (Exception ex)
             {

@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
+using ElGato_API.Models.User;
 using ElGato_API.ModelsMongo.History;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
@@ -74,6 +75,67 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, UserLayoutVMO? data)> GetUserLayout(string userId)
+        {
+            try
+            {
+                var user = await _dbContext.AppUser.FirstOrDefaultAsync(a=>a.Id == userId);
+                if (user == null)
+                {
+                    _logger.LogCritical($"User not found. UserId: {userId} Method: {nameof(GetUserLayout)}");
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User not found.", Success = false }, null);
+                }
+
+                if(user.LayoutSettings == null)
+                {
+                    user.LayoutSettings = new LayoutSettings
+                    {
+                        Animations = true,
+                        ChartStack = new List<ChartStack>
+                        {
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Linear,
+                                ChartDataType = ChartDataType.Exercise,
+                                Period = Period.All,
+                                Name = "Benchpress"
+                            },
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Compare,
+                                ChartDataType = ChartDataType.Exercise,
+                                Period = Period.Last,
+                                Name = "Benchpress"
+                            },
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Hexagonal,
+                                ChartDataType = ChartDataType.NotDefined,
+                                Period = Period.Week,
+                                Name = "Muscle engagement"
+                            },
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Bar,
+                                ChartDataType = ChartDataType.Calorie,
+                                Period = Period.Last5,
+                                Name = "Calories"
+                            },
+                        }
+                    };
+
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, ConvertToUserLayoutVMO(user.LayoutSettings));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to get user layout. UserId: {userId} Method: {nameof(GetUserLayout)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = ex.Message, Success = false }, null);
+            }
+        }
+
         public async Task<(BasicErrorResponse error, ExercisePastDataVMO? data)> GetPastExerciseData(string userId, string exerciseName, string period = "all")
         {
             try
@@ -143,5 +205,22 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
             }
         }
+
+        //prv
+        private UserLayoutVMO ConvertToUserLayoutVMO(LayoutSettings layoutSettings)
+        {
+            return new UserLayoutVMO
+            {
+                Animations = layoutSettings.Animations,
+                ChartStack = layoutSettings.ChartStack.Select(cs => new ChartStackVMO
+                {
+                    ChartType = cs.ChartType,
+                    ChartDataType = cs.ChartDataType,
+                    Period = cs.Period,
+                    Name = cs.Name
+                }).ToList()
+            };
+        }
+
     }
 }
