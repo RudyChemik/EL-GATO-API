@@ -84,7 +84,7 @@ namespace ElGato_API.Services
                     LikedExercisesDocument doc = new LikedExercisesDocument()
                     {
                         UserId = userId,
-                        Own = new List<string>(),
+                        Own = new List<LikedOwn>(),
                         Premade = new List<LikedExercise>()
                     };
 
@@ -94,7 +94,7 @@ namespace ElGato_API.Services
 
                 foreach(var exercie in userLikesDoc.Own)
                 {
-                    likedExercises.Add(new LikedExercisesVMO() { Name = exercie, Own = true });
+                    likedExercises.Add(new LikedExercisesVMO() { Name = exercie.Name, Own = true, MuscleType = exercie.MuscleType });
                 }
 
                 foreach(var exercise in userLikesDoc.Premade)
@@ -344,7 +344,7 @@ namespace ElGato_API.Services
 
                     if (model.Own)
                     {
-                        doc.Own = new List<string>() { model.Name };
+                        doc.Own = new List<LikedOwn>() { new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType } };
                         doc.Premade = new List<LikedExercise>();
                     }
                     else
@@ -352,7 +352,7 @@ namespace ElGato_API.Services
                         var existingEx = await _context.Exercises.FirstOrDefaultAsync(a=>a.Id == model.Id);
                         if (existingEx == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "given premade exercise not found", Success = false }; }
                         
-                        doc.Own = new List<string>();
+                        doc.Own = new List<LikedOwn>();
                         doc.Premade = new List<LikedExercise>() { new LikedExercise() { Name = model.Name, Id = model.Id ?? existingEx.Id } };
                     }                
 
@@ -362,13 +362,13 @@ namespace ElGato_API.Services
 
                 if(model.Own)
                 {
-                    var alreadyExist = existingDoc.Own.FirstOrDefault(model.Name);
+                    var alreadyExist = existingDoc.Own.FirstOrDefault(a=>a.Name == model.Name);
                     if (alreadyExist != null) 
                     {
                         return new BasicErrorResponse() { ErrorCode = ErrorCodes.AlreadyExists, ErrorMessage = "own exercise with given name already saved", Success = false };
                     }
 
-                    existingDoc.Own.Add(model.Name);
+                    existingDoc.Own.Add(new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType});
                 }
                 else
                 {
@@ -418,7 +418,7 @@ namespace ElGato_API.Services
                 {
                     if (exercise.Own)
                     {
-                        var exerciseToRemove = existingDoc.Own.FirstOrDefault(e => e == exercise.Name);
+                        var exerciseToRemove = existingDoc.Own.FirstOrDefault(a => a.Name == exercise.Name);
                         if (exerciseToRemove == null)
                         {
                             return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Given own exercise not found {exercise.Name}", Success = false };
@@ -705,6 +705,7 @@ namespace ElGato_API.Services
                             new ExerciseHistoryList()
                             {
                                 ExerciseName = model.ExerciseName,
+                                MuscleType = await GetMuscleType(model.ExerciseName, userId),
                                 ExerciseData = new List<ExerciseData>()
                                 {
                                     model.ExerciseData,
@@ -723,8 +724,9 @@ namespace ElGato_API.Services
                 {
                     ExerciseHistoryList newRecord = new ExerciseHistoryList()
                     {
-                        ExerciseName= model.ExerciseName,
-                        ExerciseData= new List<ExerciseData>() { model.ExerciseData }
+                        ExerciseName = model.ExerciseName,
+                        MuscleType = await GetMuscleType(model.ExerciseName, userId),
+                        ExerciseData = new List<ExerciseData>() { model.ExerciseData }
                     };
 
                     userHistoryDocument.ExerciseHistoryLists.Add(newRecord);
@@ -881,7 +883,7 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName)
+        public async Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName, MuscleType type)
         {
             try
             {
@@ -895,7 +897,7 @@ namespace ElGato_API.Services
                     LikedExercisesDocument newDoc = new LikedExercisesDocument()
                     {
                         UserId = userId,
-                        Own = new List<string> { },
+                        Own = new List<LikedOwn> { },
                         Premade = new List<LikedExercise>(),
                     };
 
@@ -911,7 +913,7 @@ namespace ElGato_API.Services
                     }
                     else
                     {
-                        newDoc.Own.Add(exerciseName);
+                        newDoc.Own.Add(new LikedOwn() { Name = exerciseName, MuscleType = type });
                     }
 
                     await _trainingLikesCollection.InsertOneAsync(newDoc);
@@ -937,14 +939,14 @@ namespace ElGato_API.Services
                 }
                 else
                 {
-                    var alreadyExisting = userLikedDocument.Own.FirstOrDefault(x => x == exerciseName);
+                    var alreadyExisting = userLikedDocument.Own.FirstOrDefault(x => x.Name == exerciseName);
                     if (alreadyExisting != null)
                     {
                         userLikedDocument.Own.Remove(alreadyExisting);
                     }
                     else
                     {
-                        userLikedDocument.Own.Add(exerciseName);
+                        userLikedDocument.Own.Add(new LikedOwn() { Name = exerciseName, MuscleType = type});
                     }
                 }
 
@@ -1117,5 +1119,60 @@ namespace ElGato_API.Services
             }
         }
        
+
+        private async Task<MuscleType> GetMuscleType(string exerciseName, string userId)
+        {
+            try
+            {
+                var exercise = await _context.Exercises.FirstOrDefaultAsync(a => a.Name == exerciseName);
+                if (exercise != null)
+                {
+                    return exercise.SpecificBodyPart switch
+                    {
+                        SpecificBodyPart.Chest or
+                        SpecificBodyPart.UpperChest or
+                        SpecificBodyPart.LowerChest => MuscleType.Chest,
+
+                        SpecificBodyPart.Back or
+                        SpecificBodyPart.Lats or
+                        SpecificBodyPart.Traps => MuscleType.Back,
+
+                        SpecificBodyPart.Shoulders => MuscleType.Shoulders,
+
+                        SpecificBodyPart.Biceps or
+                        SpecificBodyPart.Forearms or
+                        SpecificBodyPart.Triceps => MuscleType.Arms,
+
+                        SpecificBodyPart.Quads or
+                        SpecificBodyPart.Calves or
+                        SpecificBodyPart.Hamstrings or
+                        SpecificBodyPart.Glutes => MuscleType.Legs,
+
+                        SpecificBodyPart.Obliques or
+                        SpecificBodyPart.Abs => MuscleType.Core,
+
+                        _ => MuscleType.Unknown
+                    };
+                }
+
+                var likedExercisesDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (likedExercisesDoc != null)
+                {
+                    var targetExercise = likedExercisesDoc.Own.FirstOrDefault(a => a.Name == exerciseName);
+                    if (targetExercise != null)
+                    {
+                        return targetExercise.MuscleType;
+                    }
+                }
+
+                return MuscleType.Unknown;
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Issue while trying to get exercise muscle. Method: {nameof(GetMuscleType)}");
+                return MuscleType.Unknown;
+            }
+        }
+
     }
 }

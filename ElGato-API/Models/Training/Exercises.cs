@@ -49,7 +49,8 @@ namespace ElGato_API.Models.Training
         Glutes,
         Calves,
         Abs,
-        Obliques
+        Obliques,
+        Forearms,
     }
 
     public enum Equipment

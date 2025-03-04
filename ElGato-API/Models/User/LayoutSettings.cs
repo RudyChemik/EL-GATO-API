@@ -43,6 +43,7 @@
         Last,
         Last5,
         Last10,
+        Last15
     }
 
 }

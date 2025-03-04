@@ -1,4 +1,5 @@
 ﻿using ElGato_API.Models.Training;
+using ElGato_API.ModelsMongo.History;
 using ElGato_API.VM.Training;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Training;
@@ -20,7 +21,7 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> UpdateExerciseHistory(string userId, HistoryUpdateVM model, DateTime date);
         Task<BasicErrorResponse> RemoveSeriesFromAnExercise(string userId, RemoveSeriesFromExerciseVM model);
         Task<BasicErrorResponse> RemoveExerciseFromTrainingDay(string userId, RemoveExerciseFromTrainingDayVM model);
-        Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName);
+        Task<BasicErrorResponse> UpdateExerciseLikedStatus(string userId, string exerciseName, MuscleType type);
         Task<BasicErrorResponse> UpdateExerciseSeries(string userId, UpdateExerciseSeriesVM model);
         Task<BasicErrorResponse> UpdateSavedTrainingName(string userId, UpdateSavedTrainingName model);
         Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model);

@@ -16,6 +16,7 @@ namespace ElGato_API.ModelsMongo.History
     public class ExerciseHistoryList
     {
         public string ExerciseName { get; set; }
+        public MuscleType MuscleType { get; set; } = MuscleType.Unknown;
         public List<ExerciseData> ExerciseData { get; set; } = new List<ExerciseData>();
     }
 
@@ -23,5 +24,16 @@ namespace ElGato_API.ModelsMongo.History
     {
         public DateTime Date { get; set; }
         public List<ExerciseSeries> Series { get; set; }
+    }
+
+    public enum MuscleType
+    {
+        Unknown,
+        Chest,
+        Legs,
+        Back,
+        Arms,
+        Core,
+        Shoulders
     }
 }

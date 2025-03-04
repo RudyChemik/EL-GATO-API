@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data.JWT;
 using ElGato_API.Interfaces;
+using ElGato_API.ModelsMongo.History;
 using ElGato_API.Services;
 using ElGato_API.VM.Training;
 using ElGato_API.VMO.ErrorResponse;
@@ -361,13 +362,13 @@ namespace ElGato_API.Controllers
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateExerciseLikedStatus(string exerciseName)
+        public async Task<IActionResult> UpdateExerciseLikedStatus(string exerciseName, MuscleType? type)
         {
             try
             {
                 string userId = _jwtService.GetUserIdClaim();
 
-                var res = await _trainingService.UpdateExerciseLikedStatus(userId, exerciseName);
+                var res = await _trainingService.UpdateExerciseLikedStatus(userId, exerciseName, type??MuscleType.Unknown);
                 if (!res.Success)
                 {
                     return res.ErrorCode switch
