@@ -50,7 +50,7 @@ var connectionString = builder.Configuration.GetConnectionString("MongoDBConnect
 var mongoClient = new MongoClient(connectionString);
 var mongoDatabase = mongoClient.GetDatabase("off");
 
-
+builder.Services.AddSingleton<IMongoClient>(mongoClient);
 builder.Services.AddSingleton(mongoDatabase);
 
 builder.Services.AddControllers();

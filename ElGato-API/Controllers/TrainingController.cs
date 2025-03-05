@@ -8,6 +8,7 @@ using ElGato_API.VMO.Meals;
 using ElGato_API.VMO.Training;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 
 
 namespace ElGato_API.Controllers
@@ -17,11 +18,13 @@ namespace ElGato_API.Controllers
     public class TrainingController : Controller
     {
         private readonly ITrainingService _trainingService;
+        private readonly IMongoClient _client;
         private readonly IJwtService _jwtService;
-        public TrainingController(ITrainingService trainingService, IJwtService jwtService)
+        public TrainingController(IMongoClient client, ITrainingService trainingService, IJwtService jwtService)
         {
             _trainingService = trainingService;
             _jwtService = jwtService;
+            _client = client;
         }
 
         [HttpGet]
@@ -355,6 +358,72 @@ namespace ElGato_API.Controllers
                 return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured", Success = false });
             }
         }
+
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AddNewPersonalExercise([FromBody] NewPersonalExerciseVM model)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return StatusCode(400, new BasicErrorResponse()
+                    {
+                        ErrorCode = ErrorCodes.ModelStateNotValid,
+                        ErrorMessage = $"Model state not valid. Check {nameof(NewPersonalExerciseVM)}",
+                        Success = false
+                    });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+
+                LikeExerciseVM addToLikedVM = new LikeExerciseVM()
+                {
+                    MuscleType = model.MuscleType,
+                    Name = model.ExerciseName,
+                    Own = true,
+                    Id = 0
+                };
+
+                using (var session = await _client.StartSessionAsync())
+                {
+                    session.StartTransaction();
+
+                    var addExerciseToLikedRes = await _trainingService.LikeExercise(userId, addToLikedVM, session);
+                    if (!addExerciseToLikedRes.Success)
+                    {
+                        await session.AbortTransactionAsync();
+                        return addExerciseToLikedRes.ErrorCode switch
+                        {
+                            ErrorCodes.Internal => StatusCode(500, addExerciseToLikedRes),
+                            _ => BadRequest(addExerciseToLikedRes)
+                        };
+                    }
+
+                    var historyUpdate = await _trainingService.AddPersonalExerciseRecordToHistory(userId, model.ExerciseName, model.MuscleType, session);
+                    if (!historyUpdate.Success)
+                    {
+                        await session.AbortTransactionAsync();
+                        return historyUpdate.ErrorCode switch
+                        {
+                            ErrorCodes.Internal => StatusCode(500, historyUpdate),
+                            _ => BadRequest(historyUpdate)
+                        };
+                    }
+
+                    await session.CommitTransactionAsync();
+                    return Ok();
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occurred, {ex}", Success = false });
+            }
+        }
+
 
         [HttpPatch]
         [Authorize(Policy = "user")]

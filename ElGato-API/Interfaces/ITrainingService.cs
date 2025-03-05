@@ -3,6 +3,7 @@ using ElGato_API.ModelsMongo.History;
 using ElGato_API.VM.Training;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Training;
+using MongoDB.Driver;
 
 namespace ElGato_API.Interfaces
 {
@@ -14,7 +15,7 @@ namespace ElGato_API.Interfaces
         Task<(BasicErrorResponse error, SavedTrainingsVMO? data)> GetSavedTrainings(string userId);
         Task<BasicErrorResponse> SaveTraining(string userId, SaveTrainingVM model);
         Task<BasicErrorResponse> AddExercisesToTrainingDay(string userId, AddExerciseToTrainingVM model);
-        Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model);
+        Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model, IClientSessionHandle session = null);
         Task<BasicErrorResponse> RemoveExercisesFromLiked(string userId, List<LikeExerciseVM> model);
         Task<BasicErrorResponse> WriteSeriesForAnExercise(string userId, AddSeriesToAnExerciseVM model);
         Task<BasicErrorResponse> AddSavedTrainingToTrainingDay(string userId, AddSavedTrainingToTrainingDayVM model);
@@ -26,5 +27,6 @@ namespace ElGato_API.Interfaces
         Task<BasicErrorResponse> UpdateSavedTrainingName(string userId, UpdateSavedTrainingName model);
         Task<BasicErrorResponse> RemoveTrainingsFromSaved(string userId, RemoveSavedTrainingsVM model);
         Task<BasicErrorResponse> RemoveExercisesFromSavedTraining(string userId, DeleteExercisesFromSavedTrainingVM model);
+        Task<BasicErrorResponse> AddPersonalExerciseRecordToHistory(string userId, string exerciseName, MuscleType type, IClientSessionHandle session = null);
     }
 }

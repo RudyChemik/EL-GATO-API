@@ -1,23 +1,19 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
 using ElGato_API.Models.Training;
-using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.History;
-using ElGato_API.ModelsMongo.Meal;
 using ElGato_API.ModelsMongo.Training;
 using ElGato_API.VM.Training;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.Training;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ElGato_API.Services
 {
     public class TrainingService : ITrainingService
     {
-        private readonly AppDbContext _context;
+        private readonly AppDbContext _context;       
         private readonly IMongoCollection<DailyTrainingDocument> _trainingCollection;
         private readonly IMongoCollection<TrainingHistoryDocument> _trainingHistoryCollection;
         private readonly IMongoCollection<LikedExercisesDocument> _trainingLikesCollection;
@@ -329,72 +325,91 @@ namespace ElGato_API.Services
             }
         }
 
-        public async Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model)
+        public async Task<BasicErrorResponse> LikeExercise(string userId, LikeExerciseVM model, IClientSessionHandle session = null)
         {
             try
             {
+                LikedExercisesDocument existingDoc = session != null ?
+                    await _trainingLikesCollection.Find(session, a => a.UserId == userId).FirstOrDefaultAsync() :
+                    await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
 
-                var existingDoc = await _trainingLikesCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
                 if (existingDoc == null)
                 {
-                    LikedExercisesDocument doc = new LikedExercisesDocument()
+                    var doc = new LikedExercisesDocument()
                     {
                         UserId = userId,
                     };
 
                     if (model.Own)
                     {
-                        doc.Own = new List<LikedOwn>() { new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType } };
+                        doc.Own = new List<LikedOwn>()
+                        {
+                            new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType }
+                        };
                         doc.Premade = new List<LikedExercise>();
                     }
                     else
                     {
-                        var existingEx = await _context.Exercises.FirstOrDefaultAsync(a=>a.Id == model.Id);
-                        if (existingEx == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "given premade exercise not found", Success = false }; }
-                        
-                        doc.Own = new List<LikedOwn>();
-                        doc.Premade = new List<LikedExercise>() { new LikedExercise() { Name = model.Name, Id = model.Id ?? existingEx.Id } };
-                    }                
+                        var existingEx = await _context.Exercises.FirstOrDefaultAsync(a => a.Id == model.Id);
+                        if (existingEx == null)
+                        {
+                            return new BasicErrorResponse(){ ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Given premade exercise not found", Success = false };
+                        }
 
-                    await _trainingLikesCollection.InsertOneAsync(doc);
+                        doc.Own = new List<LikedOwn>();
+                        doc.Premade = new List<LikedExercise>()
+                        {
+                            new LikedExercise() { Name = model.Name, Id = model.Id ?? existingEx.Id }
+                        };
+                    }
+
+                    if (session != null)
+                        await _trainingLikesCollection.InsertOneAsync(session, doc);
+                    else
+                        await _trainingLikesCollection.InsertOneAsync(doc);
+
                     return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true };
                 }
 
-                if(model.Own)
+                if (model.Own)
                 {
-                    var alreadyExist = existingDoc.Own.FirstOrDefault(a=>a.Name == model.Name);
-                    if (alreadyExist != null) 
+                    var alreadyExist = existingDoc.Own.FirstOrDefault(a => a.Name == model.Name);
+                    if (alreadyExist != null)
                     {
-                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.AlreadyExists, ErrorMessage = "own exercise with given name already saved", Success = false };
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.AlreadyExists, ErrorMessage = "Own exercise with given name already saved", Success = false };
                     }
-
-                    existingDoc.Own.Add(new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType});
+                    existingDoc.Own.Add(new LikedOwn() { Name = model.Name, MuscleType = model.MuscleType });
                 }
                 else
                 {
                     var existingEx = await _context.Exercises.FirstOrDefaultAsync(a => a.Id == model.Id);
-                    if (existingEx == null) { return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "given premade exercise not found", Success = false }; }
-
-                    var alreadyExists = existingDoc.Premade.FirstOrDefault(a => a.Id == model.Id);
-                    if (alreadyExists != null) 
+                    if (existingEx == null)
                     {
-                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.AlreadyExists, ErrorMessage = "premade exercise with given name already saved", Success = false };
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.NotFound, ErrorMessage = "Given premade exercise not found", Success = false };
                     }
-
-                    existingDoc.Premade.Add(new LikedExercise { Name = model.Name, Id = model.Id ?? existingEx.Id });
+                    var alreadyExists = existingDoc.Premade.FirstOrDefault(a => a.Id == model.Id);
+                    if (alreadyExists != null)
+                    {
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.AlreadyExists, ErrorMessage = "Premade exercise with given name already saved", Success = false };
+                    }
+                    existingDoc.Premade.Add(new LikedExercise() { Name = model.Name, Id = model.Id ?? existingEx.Id });
                 }
 
-                await _trainingLikesCollection.ReplaceOneAsync(a => a.UserId == userId, existingDoc);
+                if (session != null)
+                    await _trainingLikesCollection.ReplaceOneAsync(session, a => a.UserId == userId, existingDoc);
+                else
+                    await _trainingLikesCollection.ReplaceOneAsync(a => a.UserId == userId, existingDoc);
 
                 return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true };
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed while trying to LikeExercise. UserId: {userId} Data: {model} Method: {nameof(LikeExercise)}");
-                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
+                return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Internal server error {ex.Message}", Success = false };
             }
         }
-    
+
+
 
         public async Task<BasicErrorResponse> RemoveExercisesFromLiked(string userId, List<LikeExerciseVM> model)
         {
@@ -1171,6 +1186,83 @@ namespace ElGato_API.Services
             {
                 _logger.LogError(ex, $"Issue while trying to get exercise muscle. Method: {nameof(GetMuscleType)}");
                 return MuscleType.Unknown;
+            }
+        }
+
+        public async Task<BasicErrorResponse> AddPersonalExerciseRecordToHistory(string userId, string exerciseName, MuscleType type, IClientSessionHandle session = null)
+        {
+            try
+            {
+                var userExerciseHistoryDocument = session != null ?
+                    await _exercisesHistoryCollection.Find(session, a => a.UserId == userId).FirstOrDefaultAsync() :
+                    await _exercisesHistoryCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+
+                if (userExerciseHistoryDocument == null)
+                {
+                    _logger.LogWarning($"Saved training collection not found. UserId: {userId} Method: {nameof(AddPersonalExerciseRecordToHistory)}");
+
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _exercisesHistoryCollection);
+
+                    if (newDoc == null)
+                    {
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.NotFound, Success = false, ErrorMessage = "User saved training document not found." };
+                    }
+
+                    userExerciseHistoryDocument = newDoc;
+                }
+
+                var targetExercise = userExerciseHistoryDocument.ExerciseHistoryLists
+                    .FirstOrDefault(a => a.ExerciseName == exerciseName);
+
+                if (targetExercise == null)
+                {
+                    var newExercise = new ExerciseHistoryList()
+                    {
+                        ExerciseName = exerciseName,
+                        ExerciseData = new List<ExerciseData>(),
+                        MuscleType = type
+                    };
+
+                    userExerciseHistoryDocument.ExerciseHistoryLists.Add(newExercise);
+
+                    var addResult = session != null ?
+                        await _exercisesHistoryCollection.ReplaceOneAsync(session, doc => doc.UserId == userId, userExerciseHistoryDocument) :
+                        await _exercisesHistoryCollection.ReplaceOneAsync(doc => doc.UserId == userId, userExerciseHistoryDocument);
+
+                    if (!addResult.IsAcknowledged)
+                    {
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, Success = false, ErrorMessage = "Failed to save new exercise record." };
+                    }
+
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Success" };
+                }
+
+                if (targetExercise.MuscleType != type)
+                {
+                    var premadeAlreadyNamedThat = await _context.Exercises.FirstOrDefaultAsync(a => a.Name == exerciseName);
+                    if (premadeAlreadyNamedThat != null)
+                    {
+                        return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Success" };
+                    }
+
+                    targetExercise.MuscleType = type;
+
+                    var updateResult = session != null ?
+                        await _exercisesHistoryCollection.ReplaceOneAsync(session, doc => doc.UserId == userId, userExerciseHistoryDocument) :
+                        await _exercisesHistoryCollection.ReplaceOneAsync(doc => doc.UserId == userId, userExerciseHistoryDocument);
+
+                    if (!updateResult.IsAcknowledged)
+                    {
+                        return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, Success = false, ErrorMessage = "Failed to update exercise" };
+                    }
+                }
+
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Success" };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error while trying to add new personal exercise to exercise history. UserId: {userId} ExerciseName: {exerciseName} Method: {nameof(AddPersonalExerciseRecordToHistory)}");
+                return new BasicErrorResponse(){ ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occurred: {ex}", Success = false };
             }
         }
 
