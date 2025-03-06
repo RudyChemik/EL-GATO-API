@@ -15,12 +15,14 @@ namespace ElGato_API.Services
         private readonly AppDbContext _dbContext;
         private readonly ILogger<UserService> _logger;
         private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
+        private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
         private readonly IHelperService _helperService;
         public UserService(AppDbContext dbContext, ILogger<UserService> logger, IMongoDatabase database, IHelperService helperService) 
         { 
             _dbContext = dbContext;
             _logger = logger;
             _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
+            _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
             _helperService = helperService;
         }
 
@@ -367,6 +369,114 @@ namespace ElGato_API.Services
             {
                 _logger.LogError(ex, $"Failed while trying to get muscle usage data UserId: {userId} Period: {period} Method: {nameof(GetMuscleUsageData)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<(BasicErrorResponse error, MakroDataVMO? data)> GetPastMakroData(string userId, string period = "all")
+        {
+            try
+            {
+                var dietHistoryDocument = await _dietHistoryCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (dietHistoryDocument == null)
+                {
+                    _logger.LogWarning($"user {userId} diet history collection does not exist. creating...");
+                    await _helperService.CreateMissingDoc(userId, _dietHistoryCollection);
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, new MakroDataVMO());
+                }
+
+                var vmo = new MakroDataVMO();
+
+                switch (period.ToLower())
+                {
+                    case "all":
+                        foreach (var day in dietHistoryDocument.DailyPlans)
+                        {
+                            MakroData data = new MakroData();
+                            data.Date = day.Date;
+
+                            foreach (var meal in day.Meals)
+                            {
+                                foreach (var ing in meal.Ingridient)
+                                {
+                                    data.Proteins += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                                    data.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKj += ((ing.EnergyKj * ing.WeightValue) / ing.PrepedFor);
+                                    data.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                                }
+                            }
+
+                            vmo.MakroData.Add(data);
+                        }
+                        break;
+                    case "year":
+                        var cutoff = DateTime.Now.AddYears(-1);
+                        foreach (var day in dietHistoryDocument.DailyPlans.Where(d => d.Date >= cutoff))
+                        {
+                            MakroData data = new MakroData();
+                            data.Date = day.Date;
+                            foreach (var meal in day.Meals)
+                            {
+                                foreach (var ing in meal.Ingridient)
+                                {
+                                    data.Proteins += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                                    data.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKj += ((ing.EnergyKj * ing.WeightValue) / ing.PrepedFor);
+                                    data.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                                }
+                            }
+                            vmo.MakroData.Add(data);
+                        }
+                        break;
+                    case "month":
+                        var cutoffMonth = DateTime.Now.AddMonths(-1);
+                        foreach (var day in dietHistoryDocument.DailyPlans.Where(d => d.Date >= cutoffMonth))
+                        {
+                            MakroData data = new MakroData();
+                            data.Date = day.Date;
+                            foreach (var meal in day.Meals)
+                            {
+                                foreach (var ing in meal.Ingridient)
+                                {
+                                    data.Proteins += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                                    data.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKj += ((ing.EnergyKj * ing.WeightValue) / ing.PrepedFor);
+                                    data.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                                }
+                            }
+                            vmo.MakroData.Add(data);
+                        }
+                        break;
+                    case "week":
+                        var cutoffWeek = DateTime.Now.AddDays(-7);
+                        foreach (var day in dietHistoryDocument.DailyPlans.Where(d => d.Date >= cutoffWeek))
+                        {
+                            MakroData data = new MakroData();
+                            data.Date = day.Date;
+                            foreach (var meal in day.Meals)
+                            {
+                                foreach (var ing in meal.Ingridient)
+                                {
+                                    data.Proteins += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                                    data.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKj += ((ing.EnergyKj * ing.WeightValue) / ing.PrepedFor);
+                                    data.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                                    data.EnergyKcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                                }
+                            }
+                            vmo.MakroData.Add(data);
+                        }
+                        break;
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, vmo);
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to get past makro data. UserId: {userId} Period: {period} Method: {nameof(GetPastMakroData)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occured: {ex.Message}", Success = false }, null);
             }
         }
     }

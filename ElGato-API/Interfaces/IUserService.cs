@@ -11,5 +11,6 @@ namespace ElGato_API.Interfaces
         Task<(BasicErrorResponse error, UserLayoutVMO? data)> GetUserLayout(string userId);
         Task<(BasicErrorResponse error, ExercisePastDataVMO? data)> GetPastExerciseData(string userId, string exerciseName, string period = "all");
         Task<(BasicErrorResponse error, MuscleUsageDataVMO? data)> GetMuscleUsageData(string userId, string period = "all");
+        Task<(BasicErrorResponse error, MakroDataVMO? data)> GetPastMakroData(string userId, string period = "all");
     }
 }
