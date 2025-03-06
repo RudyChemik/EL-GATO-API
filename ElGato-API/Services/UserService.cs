@@ -6,6 +6,7 @@ using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace ElGato_API.Services
 {
@@ -222,5 +223,151 @@ namespace ElGato_API.Services
             };
         }
 
+        public async Task<(BasicErrorResponse error, MuscleUsageDataVMO? data)> GetMuscleUsageData(string userId, string period = "all")
+        {
+            try
+            {
+                var userExercisesDataDoc = await _exercisesHistoryCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userExercisesDataDoc == null)
+                {
+                    _logger.LogWarning($"user {userId} exercise history collection does not exist. creating.");
+                    await _helperService.CreateMissingDoc(userId, _exercisesHistoryCollection);
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, new MuscleUsageDataVMO());
+                }
+
+                var vmo = new MuscleUsageDataVMO();
+
+                switch (period.ToLower())
+                {
+                    case "all":
+                        foreach (var exercise in userExercisesDataDoc.ExerciseHistoryLists)
+                        {
+                            var filteredDates = exercise.ExerciseData.Select(a => a.Date).ToList();
+
+                            if (filteredDates.Count == 0) continue;
+
+                            var existingMuscleUsage = vmo.muscleUsage.FirstOrDefault(mu => mu.MuscleType == exercise.MuscleType);
+
+                            if (existingMuscleUsage != null)
+                            {
+                                existingMuscleUsage.Dates.AddRange(filteredDates);
+                            }
+                            else
+                            {
+                                vmo.muscleUsage.Add(new MuscleUsage
+                                {
+                                    MuscleType = exercise.MuscleType,
+                                    Dates = filteredDates
+                                });
+                            }
+                        }
+                        break;
+
+                    case "year":
+                        foreach (var exercise in userExercisesDataDoc.ExerciseHistoryLists)
+                        {
+                            var filteredDates = exercise.ExerciseData.Where(a => a.Date >= DateTime.Now.AddYears(-1)).Select(a => a.Date).ToList();
+
+                            if (filteredDates.Count == 0) continue;
+
+                            var existingMuscleUsage = vmo.muscleUsage.FirstOrDefault(mu => mu.MuscleType == exercise.MuscleType);
+
+                            if (existingMuscleUsage != null)
+                            {
+                                existingMuscleUsage.Dates.AddRange(filteredDates);
+                            }
+                            else
+                            {
+                                vmo.muscleUsage.Add(new MuscleUsage
+                                {
+                                    MuscleType = exercise.MuscleType,
+                                    Dates = filteredDates
+                                });
+                            }
+                        }
+                        break;
+
+                    case "month":
+                        foreach (var exercise in userExercisesDataDoc.ExerciseHistoryLists)
+                        {
+                            var filteredDates = exercise.ExerciseData.Where(a => a.Date >= DateTime.Now.AddMonths(-1)).Select(a => a.Date).ToList();
+
+                            if (filteredDates.Count == 0) continue;
+
+                            var existingMuscleUsage = vmo.muscleUsage.FirstOrDefault(mu => mu.MuscleType == exercise.MuscleType);
+
+                            if (existingMuscleUsage != null)
+                            {
+                                existingMuscleUsage.Dates.AddRange(filteredDates);
+                            }
+                            else
+                            {
+                                vmo.muscleUsage.Add(new MuscleUsage
+                                {
+                                    MuscleType = exercise.MuscleType,
+                                    Dates = filteredDates
+                                });
+                            }
+                        }
+                        break;
+
+                    case "week":
+                        foreach (var exercise in userExercisesDataDoc.ExerciseHistoryLists)
+                        {
+                            var filteredDates = exercise.ExerciseData.Where(a => a.Date >= DateTime.Now.AddWeeks(-1)).Select(a => a.Date).ToList();
+
+                            if (filteredDates.Count == 0) continue;
+
+                            var existingMuscleUsage = vmo.muscleUsage.FirstOrDefault(mu => mu.MuscleType == exercise.MuscleType);
+
+                            if (existingMuscleUsage != null)
+                            {
+                                existingMuscleUsage.Dates.AddRange(filteredDates);
+                            }
+                            else
+                            {
+                                vmo.muscleUsage.Add(new MuscleUsage
+                                {
+                                    MuscleType = exercise.MuscleType,
+                                    Dates = filteredDates
+                                });
+                            }
+                        }
+                        break;
+
+                    default:
+                        foreach (var exercise in userExercisesDataDoc.ExerciseHistoryLists)
+                        {
+                            var filteredDates = exercise.ExerciseData.Select(a => a.Date).ToList();
+
+                            if (filteredDates.Count == 0) continue;
+
+                            var existingMuscleUsage = vmo.muscleUsage.FirstOrDefault(mu => mu.MuscleType == exercise.MuscleType);
+
+                            if (existingMuscleUsage != null)
+                            {
+                                existingMuscleUsage.Dates.AddRange(filteredDates);
+                            }
+                            else
+                            {
+                                vmo.muscleUsage.Add(new MuscleUsage
+                                {
+                                    MuscleType = exercise.MuscleType,
+                                    Dates = filteredDates
+                                });
+                            }
+                        }
+                        break;
+                }
+
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true}, vmo);
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to get muscle usage data UserId: {userId} Period: {period} Method: {nameof(GetMuscleUsageData)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
+            }
+        }
     }
 }
