@@ -46,6 +46,20 @@ namespace ElGato_API.Models.User
                     Period = Period.Last5,
                     Name = "Calories"
                 },
+                new ChartStack
+                {
+                    ChartType = ChartType.Circle,
+                    ChartDataType = ChartDataType.Makro,
+                    Period = Period.Last,
+                    Name = "Daily makro"
+                },
+                new ChartStack
+                {
+                    ChartType = ChartType.Bar,
+                    ChartDataType = ChartDataType.Makro,
+                    Period = Period.Last5,
+                    Name = "Makro"
+                },
             }
         };
     }

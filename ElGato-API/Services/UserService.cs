@@ -1,12 +1,14 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
 using ElGato_API.Models.User;
+using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.History;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using System.Globalization;
 
 namespace ElGato_API.Services
 {
@@ -16,6 +18,7 @@ namespace ElGato_API.Services
         private readonly ILogger<UserService> _logger;
         private readonly IMongoCollection<ExercisesHistoryDocument> _exercisesHistoryCollection;
         private readonly IMongoCollection<DietHistoryDocument> _dietHistoryCollection;
+        private readonly IMongoCollection<DietDocument> _dailyDietCollection;
         private readonly IHelperService _helperService;
         public UserService(AppDbContext dbContext, ILogger<UserService> logger, IMongoDatabase database, IHelperService helperService) 
         { 
@@ -23,6 +26,7 @@ namespace ElGato_API.Services
             _logger = logger;
             _exercisesHistoryCollection = database.GetCollection<ExercisesHistoryDocument>("ExercisesHistory");
             _dietHistoryCollection = database.GetCollection<DietHistoryDocument>("DietHistory");
+            _dailyDietCollection = database.GetCollection<DietDocument>("DailyDiet");
             _helperService = helperService;
         }
 
@@ -124,6 +128,20 @@ namespace ElGato_API.Services
                                 Period = Period.Last5,
                                 Name = "Calories"
                             },
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Circle,
+                                ChartDataType = ChartDataType.Makro,
+                                Period = Period.Last,
+                                Name = "Daily makro"
+                            },
+                            new ChartStack
+                            {
+                                ChartType = ChartType.Bar,
+                                ChartDataType = ChartDataType.Makro,
+                                Period = Period.Last5,
+                                Name = "Makro"
+                            },                         
                         }
                     };
 
@@ -362,7 +380,6 @@ namespace ElGato_API.Services
                         break;
                 }
 
-
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true}, vmo);
             }
             catch(Exception ex)
@@ -469,6 +486,33 @@ namespace ElGato_API.Services
                             vmo.MakroData.Add(data);
                         }
                         break;
+                }
+
+                var currentWeekData = await _dailyDietCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (currentWeekData == null)
+                {
+                    _logger.LogWarning($"user {userId} diet collection does not exist. creating...");
+                    await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
+                }
+
+                foreach (var day in currentWeekData.DailyPlans)
+                {
+                    MakroData data = new MakroData();
+                    data.Date = day.Date;
+
+                    foreach (var meal in day.Meals)
+                    {
+                        foreach(var ing in meal.Ingridient)
+                        {
+                            data.Proteins += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                            data.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                            data.EnergyKj += ((ing.EnergyKj * ing.WeightValue) / ing.PrepedFor);
+                            data.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                            data.EnergyKcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                        }
+                    }
+
+                    vmo.MakroData.Add(data);
                 }
 
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, vmo);

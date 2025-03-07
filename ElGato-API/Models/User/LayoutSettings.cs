@@ -19,7 +19,8 @@
         Linear,
         Compare,
         Hexagonal,
-        Bar
+        Bar,
+        Circle
     }
 
     public enum ChartDataType
@@ -31,7 +32,8 @@
         Fat,
         Water,
         Weight,
-        NotDefined
+        NotDefined,
+        Carbs
     }
 
     public enum Period
