@@ -57,6 +57,7 @@ namespace ElGato_API.Controllers
         [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(UserCalorieIntake), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetUserCurrentDayCalorieIntake(DateTime date)
         {
@@ -70,6 +71,7 @@ namespace ElGato_API.Controllers
                     return res.error.ErrorCode switch
                     {
                         ErrorCodes.Internal => StatusCode(500, res.error),
+                        ErrorCodes.NotFound => NotFound(res.error),
                         _ => BadRequest(res.error)
                     };
                 }
@@ -249,5 +251,35 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(DailyMakroDistributionVMO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetCurrentDailyMakroDistribution(DateTime date)
+        {
+            try
+            {
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _userService.GetDailyMakroDisturbtion(userId, date);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res.error),
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
+                    };
+                }
+
+                return Ok(res.data);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An inernal server error occured: {ex.Message}", Success = false });
+            }
+        }
     }
 }

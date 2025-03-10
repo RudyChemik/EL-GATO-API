@@ -8,8 +8,6 @@ using ElGato_API.VMO.User;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using System.Globalization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -91,8 +89,13 @@ namespace ElGato_API.Services
                 if (userDietCollection == null)
                 {
                     _logger.LogWarning($"user {userId} daily diet collection does not exist. creating.");
-                    await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
-                    return (new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"User daily diet collection not found."}, null);
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
+                    if (newDoc == null)
+                    {
+                        return (new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"User daily diet collection not found." }, null);
+                    }
+
+                    return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = $"Sucess" }, new UserCalorieIntake());
                 }
 
                 var targetDay = userDietCollection.DailyPlans.FirstOrDefault(a => a.Date == date);
@@ -560,6 +563,71 @@ namespace ElGato_API.Services
             {
                 _logger.LogError(ex, $"Failed while trying to get past makro data. UserId: {userId} Period: {period} Method: {nameof(GetPastMakroData)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occured: {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<(BasicErrorResponse error, DailyMakroDistributionVMO? data)> GetDailyMakroDisturbtion(string userId, DateTime date)
+        {
+            try
+            {
+                var dailyDietDocument = await _dailyDietCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if (dailyDietDocument == null)
+                {
+                    _logger.LogWarning($"user {userId} daily diet collection does not exist. creating...");
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
+                    if (newDoc != null)
+                    {
+                        return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, new DailyMakroDistributionVMO() { Date = date });
+                    }
+
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User diet document not found.", Success = false }, null);
+                }
+
+                var vmo = new DailyMakroDistributionVMO() { Date = date };
+
+                var targetDay = dailyDietDocument.DailyPlans.FirstOrDefault(a => a.Date == date);
+                if (targetDay != null)
+                {
+                    foreach (var meal in targetDay.Meals)
+                    {
+                        var mealRec = new DailyDistributionMeals() { Name = meal.Name, Distribution = new DailyDistribution() };                       
+
+                        foreach(var ing in meal.Ingridient)
+                        {
+                            double distProtein = (ing.Proteins * ing.WeightValue) / ing.PrepedFor;
+                            double distFats = (ing.Fats * ing.WeightValue) / ing.PrepedFor;
+                            double distCarbs = (ing.Carbs * ing.WeightValue) / ing.PrepedFor;
+                            double distKcal = (ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor;
+
+                            var ingRec = new DailyDistributionIngridient()
+                            {
+                                Name = ing.Name,
+                                Grams = ing.WeightValue,
+                                Distribution = new DailyDistribution()
+                                {
+                                    Protein = distProtein,
+                                    Fats = distFats,
+                                    Carbs = distCarbs,
+                                    Kcal = distKcal,
+                                }                           
+                            };
+
+                            mealRec.Distribution.Kcal += distKcal;
+                            mealRec.Distribution.Carbs += distCarbs;
+                            mealRec.Distribution.Fats += distFats;
+                            mealRec.Distribution.Protein += distProtein;
+                            mealRec.Ingridients.Add(ingRec);
+                        }
+                        vmo.Meals.Add(mealRec);
+                    }
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, vmo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to get daily makro disturbtion for user. UserId: {userId} Datae: {date} Method: {nameof(GetDailyMakroDisturbtion)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occured: {ex.Message}", Success = true }, null);
             }
         }
     }
