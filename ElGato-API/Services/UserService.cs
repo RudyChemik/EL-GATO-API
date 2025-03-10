@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using System.Globalization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ElGato_API.Services
 {
@@ -79,6 +80,44 @@ namespace ElGato_API.Services
                 error.ErrorMessage = ex.Message;
                 error.ErrorCode = ErrorCodes.Internal;
                 return (error, userCalorieIntake);
+            }
+        }
+
+        public async Task<(BasicErrorResponse error, UserCalorieIntake? model)> GetCurrentCalories(string userId, DateTime date)
+        {
+            try
+            {
+                var userDietCollection = await _dailyDietCollection.Find(a => a.UserId == userId).FirstOrDefaultAsync();
+                if (userDietCollection == null)
+                {
+                    _logger.LogWarning($"user {userId} daily diet collection does not exist. creating.");
+                    await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
+                    return (new BasicErrorResponse() { Success = false, ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"User daily diet collection not found."}, null);
+                }
+
+                var targetDay = userDietCollection.DailyPlans.FirstOrDefault(a => a.Date == date);
+                var vmo = new UserCalorieIntake();
+
+                if (targetDay != null)
+                {
+                    foreach (var meal in targetDay.Meals)
+                    {
+                        foreach(var ing in meal.Ingridient)
+                        {
+                            vmo.Protein += ((ing.Proteins * ing.WeightValue) / ing.PrepedFor);
+                            vmo.Carbs += ((ing.Carbs * ing.WeightValue) / ing.PrepedFor);
+                            vmo.Fats += ((ing.Fats * ing.WeightValue) / ing.PrepedFor);
+                            vmo.Kcal += ((ing.EnergyKcal * ing.WeightValue) / ing.PrepedFor);
+                        }
+                    }
+                }
+
+                return (new BasicErrorResponse() { Success = true, ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess" }, vmo);
+
+            }
+            catch(Exception ex)
+            {
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
             }
         }
 

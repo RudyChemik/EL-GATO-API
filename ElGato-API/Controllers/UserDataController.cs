@@ -55,6 +55,35 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(UserCalorieIntake), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetUserCurrentDayCalorieIntake(DateTime date)
+        {
+            try
+            {
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _userService.GetCurrentCalories(userId, date);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
+                    };
+                }
+
+                return Ok(res.model);
+            }
+            catch(Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
