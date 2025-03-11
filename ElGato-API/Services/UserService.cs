@@ -124,6 +124,40 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<(BasicErrorResponse error, double water)> GetCurrentWaterIntake(string userId, DateTime date)
+        {
+            try
+            {
+                var dailyDietDoc = await _dailyDietCollection.Find(a=>a.UserId == userId).FirstOrDefaultAsync();
+                if(dailyDietDoc == null)
+                {
+                    _logger.LogWarning($"user {userId} daily diet collection does not exist. creating.");
+                    var newDoc = await _helperService.CreateMissingDoc(userId, _dailyDietCollection);
+                    if(newDoc == null)
+                    {
+                        return (new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User daily diet document not found.", Success = false }, 0);
+                    }
+
+                    return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, ErrorMessage = "Sucess", Success = true }, 0);
+                }
+
+                double waterIntake = 0;
+
+                var targetDay = dailyDietDoc.DailyPlans.FirstOrDefault(a => a.Date.Date == date.Date);
+                if(targetDay != null)
+                {
+                    waterIntake = targetDay.Water;
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Sucesss" }, waterIntake);
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Error while trying to get current water intake for user. UserId: {userId} Date: {date} Method: {nameof(GetCurrentWaterIntake)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, 0);
+            }
+        }
+
         public async Task<(BasicErrorResponse error, UserLayoutVMO? data)> GetUserLayout(string userId)
         {
             try
@@ -623,5 +657,6 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An error occured: {ex.Message}", Success = true }, null);
             }
         }
+
     }
 }

@@ -86,6 +86,38 @@ namespace ElGato_API.Controllers
 
         [HttpGet]
         [Authorize(Policy = "user")]
+        [ProducesResponseType(typeof(double), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetUserWaterIntake(DateTime date)
+        {
+            try
+            {
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _userService.GetCurrentWaterIntake(userId, date);
+                if (!res.error.Success)
+                {
+                    return res.error.ErrorCode switch
+                    {
+                        ErrorCodes.NotFound => NotFound(res.error),
+                        ErrorCodes.Internal => StatusCode(500, res.error),
+                        _ => BadRequest(res.error)
+                    };
+                }
+
+                return Ok(res.water);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+
+        }
+
+        [HttpGet]
+        [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
