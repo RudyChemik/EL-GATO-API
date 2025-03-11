@@ -252,7 +252,7 @@ namespace ElGato_API.Services
                     existingDocument = newDoc;
                 }
 
-                var todayPlan = existingDocument.DailyPlans.FirstOrDefault(p => p.Date.Date == date);
+                var todayPlan = existingDocument.DailyPlans.FirstOrDefault(p => p.Date.Date == date.Date);
                 if (todayPlan == null)
                 {
                     todayPlan = new DailyDietPlan

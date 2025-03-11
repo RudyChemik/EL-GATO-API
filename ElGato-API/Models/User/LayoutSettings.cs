@@ -33,7 +33,8 @@
         Water,
         Weight,
         NotDefined,
-        Carbs
+        Carbs,
+        MakroDist,
     }
 
     public enum Period

@@ -173,17 +173,10 @@ namespace ElGato_API.Services
                             new ChartStack
                             {
                                 ChartType = ChartType.Circle,
-                                ChartDataType = ChartDataType.Makro,
+                                ChartDataType = ChartDataType.MakroDist,
                                 Period = Period.Last,
                                 Name = "Daily makro"
-                            },
-                            new ChartStack
-                            {
-                                ChartType = ChartType.Bar,
-                                ChartDataType = ChartDataType.Makro,
-                                Period = Period.Last5,
-                                Name = "Makro"
-                            },                         
+                            }
                         }
                     };
 
