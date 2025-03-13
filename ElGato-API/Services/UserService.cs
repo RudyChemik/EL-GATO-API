@@ -3,6 +3,7 @@ using ElGato_API.Interfaces;
 using ElGato_API.Models.User;
 using ElGato_API.ModelsMongo.Diet;
 using ElGato_API.ModelsMongo.History;
+using ElGato_API.VM.UserData;
 using ElGato_API.VMO.ErrorResponse;
 using ElGato_API.VMO.User;
 using Microsoft.EntityFrameworkCore;
@@ -658,5 +659,34 @@ namespace ElGato_API.Services
             }
         }
 
+        public async Task<BasicErrorResponse> UpdateLayout(string userId, UserLayoutVM model)
+        {
+            try
+            {
+                var user = await _dbContext.AppUser.FirstOrDefaultAsync(a => a.Id == userId);
+                if (user == null)
+                {
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = "User not found.", Success = false };
+                }
+
+                LayoutSettings settings = new LayoutSettings()
+                {
+                    Animations = model.Animations,
+                    ChartStack = model.ChartStack,
+                };
+
+                user.LayoutSettings = settings;
+
+                _dbContext.AppUser.Update(user);
+                await _dbContext.SaveChangesAsync();
+
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success  = true, ErrorMessage = "Sucess" };
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to update user layout. UserId: {userId} Data: {model} Method: {nameof(UpdateLayout)}");
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex}", Success = false };
+            }
+        }
     }
 }
