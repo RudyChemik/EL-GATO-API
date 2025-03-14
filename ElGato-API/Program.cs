@@ -193,6 +193,13 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/exercise-images"
 });
 
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets/Images/Badges")),
+    RequestPath = "/badges"
+});
+
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAllOrigins");

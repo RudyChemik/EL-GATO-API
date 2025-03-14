@@ -31,6 +31,7 @@
     <Folder Include="Assets\Images\MealImages\" />
     <Folder Include="Assets\Images\Achievments\" />
     <Folder Include="Assets\Images\Exercises\" />
+    <Folder Include="Assets\Images\Badges\" />
     <Folder Include="Assets\Images\UserPfp\" />
   </ItemGroup>
 
