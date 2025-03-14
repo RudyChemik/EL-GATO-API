@@ -376,3 +376,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /ElGato-API/Assets/Images/MealImages
+/ElGato-API/Assets/Images/Badges
