@@ -4,6 +4,7 @@ using ElGato_API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ElGato_API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250314191037_Challangess")]
+    partial class Challangess
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,7 +40,7 @@ namespace ElGato_API.Migrations
                     b.ToTable("UserAchievements", (string)null);
                 });
 
-            modelBuilder.Entity("ElGato_API.Models.Feed.Challange", b =>
+            modelBuilder.Entity("ElGato_API.Models.Challange.Challange", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -48,9 +51,6 @@ namespace ElGato_API.Migrations
                     b.Property<string>("Badge")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("CreatorId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -77,32 +77,7 @@ namespace ElGato_API.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatorId");
-
                     b.ToTable("Challanges");
-                });
-
-            modelBuilder.Entity("ElGato_API.Models.Feed.Creator", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Pfp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Creators");
                 });
 
             modelBuilder.Entity("ElGato_API.Models.Requests.AddProductRequest", b =>
@@ -677,16 +652,6 @@ namespace ElGato_API.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ElGato_API.Models.Feed.Challange", b =>
-                {
-                    b.HasOne("ElGato_API.Models.Feed.Creator", "Creator")
-                        .WithMany("Challenges")
-                        .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Creator");
-                });
-
             modelBuilder.Entity("ElGato_API.Models.User.AchievmentCounters", b =>
                 {
                     b.HasOne("ElGato_API.Models.User.Achievment", "Achievment")
@@ -792,11 +757,6 @@ namespace ElGato_API.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("ElGato_API.Models.Feed.Creator", b =>
-                {
-                    b.Navigation("Challenges");
                 });
 
             modelBuilder.Entity("ElGato_API.Models.User.AppUser", b =>

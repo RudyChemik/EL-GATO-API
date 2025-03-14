@@ -1,4 +1,6 @@
-﻿using ElGato_API.Models.Requests;
+﻿using ElGato_API.Migrations;
+using ElGato_API.Models.Feed;
+using ElGato_API.Models.Requests;
 using ElGato_API.Models.Training;
 using ElGato_API.Models.User;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -59,6 +61,12 @@ namespace ElGato_API.Data
                 .HasConversion(layoutSettingsConverter)
                 .HasColumnType("nvarchar(max)");
 
+            modelBuilder.Entity<Challange>()
+              .HasOne(c => c.Creator)
+              .WithMany(c => c.Challenges)
+              .HasForeignKey(c => c.CreatorId)
+              .OnDelete(DeleteBehavior.Cascade);
+
             base.OnModelCreating(modelBuilder);
         }
 
@@ -72,6 +80,8 @@ namespace ElGato_API.Data
         public DbSet<AchievmentCounters> AchievmentCounters { get; set; }
         public DbSet<Exercises> Exercises { get; set; }
         public DbSet<Muscle> Muscles { get; set; }
+        public DbSet<Challange> Challanges { get; set; }
+        public DbSet<Creator> Creators { get; set; }
 
     }
 }
