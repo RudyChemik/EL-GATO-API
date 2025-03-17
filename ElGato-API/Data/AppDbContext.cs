@@ -67,6 +67,18 @@ namespace ElGato_API.Data
               .HasForeignKey(c => c.CreatorId)
               .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<AppUser>()
+                .HasMany(u => u.ActiveChallanges)
+                .WithOne()
+                .HasForeignKey("AppUserId")
+                .IsRequired();
+
+            modelBuilder.Entity<ActiveChallange>()
+                .HasOne(ac => ac.Challenge)
+                .WithMany()
+                .HasForeignKey(ac => ac.ChallengeId)
+                .IsRequired();
+
             base.OnModelCreating(modelBuilder);
         }
 
@@ -82,6 +94,6 @@ namespace ElGato_API.Data
         public DbSet<Muscle> Muscles { get; set; }
         public DbSet<Challange> Challanges { get; set; }
         public DbSet<Creator> Creators { get; set; }
-
+        public DbSet<ActiveChallange> ActiveChallange { get; set; }
     }
 }
