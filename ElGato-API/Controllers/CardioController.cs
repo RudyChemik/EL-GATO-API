@@ -48,6 +48,7 @@ namespace ElGato_API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(List<ActiveChallengeVMO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
@@ -76,5 +77,39 @@ namespace ElGato_API.Controllers
             }
         }
 
+        [HttpPost]
+        [Authorize(Policy = "user")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> JoinChallenge(int challengeId)
+        {
+            try
+            {
+                if(challengeId == 0)
+                {
+                    return BadRequest(new BasicErrorResponse() { ErrorCode = ErrorCodes.ModelStateNotValid, ErrorMessage = "Model state not valid.",Success = false });
+                }
+
+                var userId = _jwtService.GetUserIdClaim();
+                var res = await _cardioService.JoinChallenge(userId, challengeId);
+                if (!res.Success)
+                {
+                    return res.ErrorCode switch
+                    {
+                        ErrorCodes.Internal => StatusCode(500, res),
+                        ErrorCodes.NotFound => NotFound(res),
+                        _ => BadRequest(res)
+                    };
+                }
+                
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"An internal server error occured: {ex.Message}", Success = false });
+            }
+        }
     }
 }

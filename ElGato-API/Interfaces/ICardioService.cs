@@ -7,5 +7,6 @@ namespace ElGato_API.Interfaces
     {
         Task<(BasicErrorResponse error, List<ChallengeVMO>? data)> GetActiveChallenges();
         Task<(BasicErrorResponse error, List<ActiveChallengeVMO>? data)> GetUserActiveChallenges(string userId);
+        Task<BasicErrorResponse> JoinChallenge(string userId, int challengeId);
     }
 }

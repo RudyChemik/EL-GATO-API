@@ -1,5 +1,6 @@
 ﻿using ElGato_API.Data;
 using ElGato_API.Interfaces;
+using ElGato_API.Models.User;
 using ElGato_API.VMO.Cardio;
 using ElGato_API.VMO.ErrorResponse;
 using Microsoft.EntityFrameworkCore;
@@ -115,6 +116,39 @@ namespace ElGato_API.Services
             {
                 _logger.LogError(ex, $"Failed while trying to get currently active challenges for user. UserId: {userId} Method: {nameof(GetActiveChallenges)}");
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
+            }
+        }
+
+        public async Task<BasicErrorResponse> JoinChallenge(string userId, int challengeId)
+        {
+            try
+            {
+                var challenge = await _context.Challanges.FirstOrDefaultAsync(a=>a.Id == challengeId);
+                if(challenge == null)
+                {
+                    _logger.LogWarning($"User tried to join un-existing challenge. UserId: {userId} ChallengeId: {challengeId} Method: {nameof(JoinChallenge)}");
+                    return new BasicErrorResponse() { ErrorCode = ErrorCodes.NotFound, ErrorMessage = $"Challenge with id {challengeId} doesn ot exists.", Success = false };
+                }
+
+                var user = await _context.AppUser.FirstOrDefaultAsync(a=>a.Id == userId);
+
+                var newActiveChallengeRecord = new ActiveChallange()
+                {
+                    StartDate = DateTime.Now,
+                    Challenge = challenge,
+                    ChallengeId = challengeId,
+                    CurrentProgress = 0
+                };
+
+                user.ActiveChallanges.Add(newActiveChallengeRecord);
+                await _context.SaveChangesAsync();
+
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Sucess" };
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to join challenge. UserId: {userId} ChallengeId: {challengeId} Method: {nameof(JoinChallenge)}");
+                return new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false };
             }
         }
     }

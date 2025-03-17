@@ -12,7 +12,7 @@ namespace ElGato_API.Models.User
         public CalorieInformation? CalorieInformation { get; set; }
         public List<Achievment>? Achievments { get; set; } = new List<Achievment>();
         public List<AchievmentCounters> AchivmentCounter { get; set; } = new List<AchievmentCounters>();
-        public List<ActiveChallange>? ActiveChallanges { get; set; }
+        public List<ActiveChallange>? ActiveChallanges { get; set; } = new List<ActiveChallange>();
 
         public LayoutSettings? LayoutSettings { get; set; } = new LayoutSettings
         {
