@@ -6,5 +6,6 @@ namespace ElGato_API.Interfaces
     public interface ICardioService
     {
         Task<(BasicErrorResponse error, List<ChallengeVMO>? data)> GetActiveChallenges();
+        Task<(BasicErrorResponse error, List<ActiveChallengeVMO>? data)> GetUserActiveChallenges(string userId);
     }
 }

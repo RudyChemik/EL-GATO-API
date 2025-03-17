@@ -59,5 +59,63 @@ namespace ElGato_API.Services
                 return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
             }
         }
+
+        public async Task<(BasicErrorResponse error, List<ActiveChallengeVMO>? data)> GetUserActiveChallenges(string userId)
+        {
+            try
+            {
+                var vmo = new List<ActiveChallengeVMO>();
+                var user = await _context.AppUser.Include(a=>a.ActiveChallanges).ThenInclude(ac => ac.Challenge).FirstOrDefaultAsync(a=>a.Id == userId);
+                if (user != null && user.ActiveChallanges != null)
+                {
+                    foreach (var activeChallenge in user.ActiveChallanges)
+                    {
+                        if(activeChallenge.Challenge.EndDate < DateTime.UtcNow)
+                        {
+                            continue;
+                        }
+
+                        var challengeVMO = new ChallengeVMO
+                        {
+                            Id = activeChallenge.Challenge.Id,
+                            Name = activeChallenge.Challenge.Name,
+                            Description = activeChallenge.Challenge.Description,
+                            EndDate = activeChallenge.Challenge.EndDate,
+                            Badge = activeChallenge.Challenge.Badge,    
+                            GoalType = activeChallenge.Challenge.GoalType,
+                            GoalValue = activeChallenge.Challenge.GoalValue,
+                            MaxTimeMinutes = activeChallenge.Challenge.MaxTimeMinutes,
+                            Type = activeChallenge.Challenge.Type
+                        };
+
+                        if(activeChallenge.Challenge.Creator != null) 
+                        {
+                            var creator = new CreatorVMO()
+                            {
+                                Description = activeChallenge.Challenge.Creator.Description,
+                                Name = activeChallenge.Challenge.Creator.Name,
+                                Pfp = activeChallenge.Challenge.Creator.Pfp,
+                            };
+
+                            challengeVMO.Creator = creator;
+                        }
+
+                        vmo.Add(new ActiveChallengeVMO
+                        {
+                            ChallengeData = challengeVMO,
+                            CurrentProgess = activeChallenge.CurrentProgress,
+                            StartDate = activeChallenge.StartDate
+                        });
+                    }
+                }
+
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.None, Success = true, ErrorMessage = "Sucess"}, vmo);
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed while trying to get currently active challenges for user. UserId: {userId} Method: {nameof(GetActiveChallenges)}");
+                return (new BasicErrorResponse() { ErrorCode = ErrorCodes.Internal, ErrorMessage = $"Error occured: {ex.Message}", Success = false }, null);
+            }
+        }
     }
 }
