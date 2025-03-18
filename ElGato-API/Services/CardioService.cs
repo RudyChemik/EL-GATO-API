@@ -17,12 +17,18 @@ namespace ElGato_API.Services
             _logger = logger;
         }
 
-        public async Task<(BasicErrorResponse error, List<ChallengeVMO>? data)> GetActiveChallenges()
+        public async Task<(BasicErrorResponse error, List<ChallengeVMO>? data)> GetActiveChallenges(string userId)
         {
             try
             {
                 List<ChallengeVMO> vmo = new List<ChallengeVMO>();
                 var challs = await _context.Challanges.Where(a=>a.EndDate > DateTime.Today).ToListAsync();
+                var participatedChallenges = await _context.AppUser.Include(c=>c.ActiveChallanges).Where(a=>a.Id == userId).FirstOrDefaultAsync();
+
+                if (participatedChallenges != null && participatedChallenges.ActiveChallanges != null)
+                {
+                    challs.RemoveAll(c => participatedChallenges.ActiveChallanges.Any(ac => ac.ChallengeId == c.Id));
+                }
 
                 foreach (var chall in challs)
                 {

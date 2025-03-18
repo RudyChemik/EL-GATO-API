@@ -21,6 +21,7 @@ namespace ElGato_API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "user")]
         [ProducesResponseType(typeof(List<ChallengeVMO>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BasicErrorResponse), StatusCodes.Status500InternalServerError)]
@@ -29,7 +30,9 @@ namespace ElGato_API.Controllers
         {
             try
             {
-                var res = await _cardioService.GetActiveChallenges();
+                var userId = _jwtService.GetUserIdClaim();
+
+                var res = await _cardioService.GetActiveChallenges(userId);
                 if (!res.error.Success)
                 {
                     return res.error.ErrorCode switch
